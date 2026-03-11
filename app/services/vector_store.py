@@ -1,8 +1,10 @@
 """
 Vector store que encapsula Chroma via LangChain.
 Expõe interface do projeto: add_documents, get_retriever, similarity_search_with_score.
+Recebe embedding_function de forma injetável; se não for passado, usa default (HuggingFaceEmbeddings).
 """
 import uuid
+from typing import TYPE_CHECKING
 
 from langchain_chroma import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -10,27 +12,28 @@ from langchain_core.documents import Document
 
 from app.core.config import settings
 
+if TYPE_CHECKING:
+    from langchain_core.embeddings import Embeddings
+
 
 class VectorStore:
-    """Encapsula Chroma (LangChain) com HuggingFaceEmbeddings."""
+    """Encapsula Chroma (LangChain). Embedding pode ser injetado ou usa default."""
 
     def __init__(
         self,
+        embedding_function: "Embeddings | None" = None,
         persist_directory: str | None = None,
         collection_name: str | None = None,
-        embedding_model_name: str | None = None,
     ) -> None:
         self._persist_directory = persist_directory or settings.chroma_path
         self._collection_name = collection_name or settings.chroma_collection_name
-        self._embedding_model_name = (
-            embedding_model_name or settings.embedding_model_name
-        )
-        self._embeddings = HuggingFaceEmbeddings(
-            model_name=self._embedding_model_name,
-        )
+        if embedding_function is None:
+            embedding_function = HuggingFaceEmbeddings(
+                model_name=settings.embedding_model_name,
+            )
         self._store = Chroma(
             collection_name=self._collection_name,
-            embedding_function=self._embeddings,
+            embedding_function=embedding_function,
             persist_directory=self._persist_directory,
         )
 
@@ -56,7 +59,7 @@ class VectorStore:
         self, query: str, k: int = 8
     ) -> list[tuple[Document, float]]:
         """
-        Busca por similaridade retornando (Document, score).
-        O score do Chroma é distância L2 (menor = mais similar).
+        Busca por similaridade retornando (Document, distance).
+        O valor retornado pelo Chroma é distância L2 (menor = mais similar).
         """
         return self._store.similarity_search_with_score(query, k=k)
