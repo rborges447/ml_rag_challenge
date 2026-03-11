@@ -4,12 +4,29 @@ import fitz
 
 
 def clean_text(text: str) -> str:
-    text = text.replace("\x00", " ")
-    text = text.replace("\r", " ")
-    text = text.replace("\t", " ")
-    text = text.replace("\n", " ")
+    """
+    Limpa o texto preservando quebras de linha para chunking semântico.
+    - Normaliza fim de linha (\\r\\n, \\r) para \\n
+    - Remove/substitui caracteres problemáticos (\\x00, \\t)
+    - Colapsa múltiplos espaços dentro de cada linha (não cruza \\n)
+    - Normaliza múltiplas quebras consecutivas para no máximo \\n\\n
+    """
+    if not text:
+        return ""
 
-    text = re.sub(r"\s+", " ", text)
+    text = text.replace("\x00", " ")
+    text = text.replace("\r\n", "\n")
+    text = text.replace("\r", "\n")
+    text = text.replace("\t", " ")
+
+    lines = text.split("\n")
+    cleaned_lines = []
+    for line in lines:
+        line = re.sub(r" +", " ", line).strip()
+        cleaned_lines.append(line)
+
+    text = "\n".join(cleaned_lines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 
