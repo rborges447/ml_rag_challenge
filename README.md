@@ -1,6 +1,6 @@
 # ML RAG Challenge
 
-API RAG com FastAPI: ingestão de PDFs (pré-processamento + LangChain + Chroma), retrieval em duas etapas (busca ampla + reranking heurístico). Sem geração por LLM (apenas chunks recuperados).
+API RAG com FastAPI: ingestão de PDFs (pré-processamento + LangChain + Chroma), retrieval em duas etapas (busca ampla + reranking heurístico) e geração de resposta final via LLM (Gemini) usando contexto recuperado.
 
 ## Instalação
 
@@ -16,10 +16,43 @@ uvicorn app.main:app --reload
 
 Documentação interativa: http://localhost:8000/docs
 
+## Interface Streamlit (chat)
+
+Para usar uma interface web simples (dark/clean) que consome a API:
+
+1. Instale também as dependências opcionais:
+
+```bash
+pip install streamlit httpx
+```
+
+2. Rode a API e o Streamlit em processos separados (recomendado):
+
+```bash
+python run_api.py
+streamlit run streamlit_app.py
+```
+
+Ou, para uma experiência rápida em desenvolvimento, use o script de conveniência que orquestra os dois:
+
+```bash
+python main.py
+```
+
+Na interface Streamlit:
+
+- Use a sidebar para configurar a URL da API (default `http://localhost:8000`) e fazer upload de PDFs.
+- Use a área principal de chat para enviar perguntas no formato:
+  - `Q: "sua pergunta"`
+  - `A: "resposta gerada pela LLM com base nos documentos indexados"`
+
 ## Testes rápidos
 
 1. **Indexar um PDF**: `POST /documents` com um arquivo PDF (form-data, campo `file`).
-2. **Testar retrieval**: `POST /question` com body `{"question": "sua pergunta"}`. A resposta traz `retrieved_chunks` com: `text`, `source`, `page`, `distance`, `score`, `rerank_score`, e metadados (`chunk_index`, `char_count`, `is_intro_page`, `section_hint`).
+2. **Testar perguntas com LLM**: `POST /question` com body `{"question": "sua pergunta"}`. A resposta traz:
+   - `answer`: resposta em linguagem natural vinda da LLM.
+   - `references`: lista de referências simples baseadas em `source/page`.
+   - `retrieved_chunks`: lista de chunks usados como contexto (para debug).
 3. **Query params** (opcionais): `top_k` (chunks finais, default 5), `initial_k` (candidatos antes do rerank), `max_distance` (filtro L2).
 
 ## Reindexação

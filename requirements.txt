@@ -17,3 +17,4 @@ langchain-text-splitters>=0.3
 
 # LLMs
 google-genai
+streamlit
