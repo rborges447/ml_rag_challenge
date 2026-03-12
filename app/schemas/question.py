@@ -8,3 +8,4 @@ class QuestionRequest(BaseModel):
 class QuestionResponse(BaseModel):
     answer: str
     references: list[str]
+    retrieved_chunks: list[dict] | None = None

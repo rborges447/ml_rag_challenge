@@ -14,3 +14,6 @@ langchain>=0.3
 langchain-community>=0.3
 langchain-chroma>=0.1
 langchain-text-splitters>=0.3
+
+# LLMs
+google-genai
