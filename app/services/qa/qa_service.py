@@ -1,8 +1,7 @@
 """
 Fachada para Q&A. Hoje apenas delega retrieval; no futuro: retrieval + geração (LLM).
-Não integrar LLM ainda.
 """
-from app.services.retrieval_service import RetrievalService
+from app.services.retrieval import RetrievalService
 
 
 def get_qa_service() -> "QAService":
@@ -23,7 +22,6 @@ class QAService:
         max_distance: float | None = None,
         min_score: float | None = None,
     ) -> list[dict]:
-        """Delega para RetrievalService.retrieve()."""
         return self._retrieval.retrieve(
             question=question,
             top_k=top_k,

@@ -12,7 +12,7 @@ _root = Path(__file__).resolve().parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from app.services.retrieval_service import RetrievalService
+from app.services import RetrievalService
 
 
 # Perguntas e termos que devem aparecer em pelo menos um chunk relevante (minúsculas)

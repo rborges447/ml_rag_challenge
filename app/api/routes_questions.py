@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query
 
-from app.schemas.question import QuestionRequest
-from app.services.qa_service import get_qa_service
+from app.schemas import QuestionRequest
+from app.services import get_qa_service
 
 router = APIRouter(tags=["questions"])
 
