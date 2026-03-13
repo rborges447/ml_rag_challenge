@@ -8,6 +8,22 @@ API RAG com FastAPI: ingestão de PDFs (pré-processamento + LangChain + Chroma)
 pip install -r requirements.txt
 ```
 
+## Configuração do ambiente (.env)
+
+O projeto usa variáveis de ambiente para configuração. Crie um arquivo `.env` na raiz do projeto antes de rodar a API ou a UI.
+
+1. **Copie o exemplo para `.env`:**
+   ```bash
+   copy .env.example .env
+   ```
+   (No Linux/macOS: `cp .env.example .env`.)
+
+2. **Edite o `.env`** e preencha pelo menos:
+   - **`GEMINI_API_KEY`** – chave da API do Google (Gemini), necessária para o fluxo de perguntas e respostas. Obtenha em [Google AI Studio](https://aistudio.google.com/apikey).
+   - As demais variáveis têm valores padrão no `.env.example`; altere apenas se precisar (por exemplo, outra URL da API para a UI ou paths diferentes).
+
+3. **Não versionar o `.env`** – ele contém dados sensíveis. O `.env.example` serve só de modelo (sem chaves reais).
+
 ## Rodar a API
 
 Na raiz do projeto:
@@ -67,11 +83,12 @@ python scripts/benchmark_retrieval.py
 
 A saída mostra, por pergunta, se houve acerto em top-1, top-3 e top-5 (critério: chunk contém os termos obrigatórios definidos no script).
 
-## Configuração (.env)
+## Variáveis de ambiente (referência)
 
-Copie `.env.example` para `.env` e ajuste conforme o ambiente. Variáveis principais:
+Após criar o `.env` (ver seção **Configuração do ambiente (.env)** acima), você pode ajustar:
 
 - **Backend – paths:** `CHROMA_PATH` (default `data/chroma`), `UPLOAD_DIR` (default `data/raw`).
 - **Chunking:** `CHUNK_SIZE`, `CHUNK_OVERLAP`, `INTRO_PAGE_MAX`.
 - **Retrieval:** `RETRIEVAL_INITIAL_K`, `RETRIEVAL_TOP_K_FINAL`, `RETRIEVAL_MAX_DISTANCE`, `RETRIEVAL_MIN_SCORE`.
+- **LLM:** `LLM_PROVIDERS`, `LLM_TIMEOUT_SECONDS`, `GEMINI_API_KEY`, `GEMINI_MODEL` (obrigatório para Q&A).
 - **UI:** `API_BASE_URL` (URL da API, ex.: `http://localhost:8000`), `UI_HTTP_TIMEOUT_SECONDS`.
