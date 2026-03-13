@@ -69,33 +69,89 @@ Para alterar a prioridade, **basta mudar a ordem em `LLM_ROUTE`**, sem alterar c
 
 **Pré-requisito:** Docker e Docker Compose instalados.
 
-Passos:
+   ############################################################################################################################################
+   ### 2.1 Primeira vez (build + subir)
+   ############################################################################################################################################
 
-1. Garanta que o `.env` foi criado e preenchido (ver seção **1. Variáveis de ambiente (.env)**).
+   Na raiz do projeto:
 
-2. Na raiz do projeto, suba os serviços:
+   1. Crie o `.env` a partir de `.env.example` e preencha pelo menos as chaves necessárias (ver seção **1. Variáveis de ambiente (.env)**).
+
+   2. Construa as imagens e suba os containers em background:
+
+   ```bash
+   docker compose up -d --build
+   # ou: docker-compose up -d --build
+   ```
+
+   O `--build` força o build das imagens (instala dependências dentro dos containers). Na primeira vez isso pode levar alguns minutos (download de base, pip install, etc.).
+
+   3. Aguarde a API ficar saudável (o Compose espera o healthcheck). Depois acesse:
+   - **API:** http://localhost:8000 (docs: http://localhost:8000/docs)
+   - **UI:** http://localhost:8501
+
+   ############################################################################################################################################
+   ### 2.2 Subir de novo (já fez build antes)
+   ############################################################################################################################################
+
+   Se as imagens já existem e você só quer iniciar os serviços:
 
    ```bash
    docker compose up -d
-   # ou, dependendo da versão:
-   docker-compose up -d
    ```
 
-3. **Acessos:**
-   - API: http://localhost:8000 (docs: http://localhost:8000/docs)
-   - UI: http://localhost:8501
+   Os containers sobem usando as imagens já construídas; não há novo `pip install`. Os dados no volume `rag_data` (Chroma e PDFs) continuam disponíveis.
 
-4. Para parar os serviços:
+   ############################################################################################################################################
+   ### 2.3 Parar os serviços
+   ############################################################################################################################################
+
+   Para parar os containers mantendo volumes e imagens:
 
    ```bash
    docker compose down
    ```
 
-Observações:
+   Os dados no volume `rag_data` são preservados. Na próxima vez que rodar `docker compose up -d`, o índice e os uploads continuarão lá.
 
-- Dentro do Docker, a UI usa `API_BASE_URL=http://api:8000` (nome do serviço no compose).
-- Os dados (Chroma e uploads) persistem no volume `rag_data`; em novo `up`, o índice e os PDFs enviados continuam disponíveis.
-- **Não é necessário rodar `pip install -r requirements.txt` para o fluxo com Docker.**
+   ############################################################################################################################################
+   ### 2.4 Desinstalar tudo (containers + volumes + imagens)
+   ############################################################################################################################################
+
+   Para remover containers, redes e **volumes** (apaga índice Chroma e PDFs enviados):
+
+   ```bash
+   docker compose down -v
+   ```
+
+   Para remover também as **imagens** do projeto (liberar espaço em disco; na próxima vez será necessário `docker compose up -d --build` de novo):
+
+   ```bash
+   docker compose down -v
+   docker image ls
+   # identifique as imagens do projeto (ex.: ml_rag_challenge-api, ml_rag_challenge-ui) e remova:
+   docker rmi ml_rag_challenge-api ml_rag_challenge-ui
+   ```
+
+   Resumo rápido:
+   - `docker compose down` – para e remove containers/rede; mantém volumes e imagens.
+   - `docker compose down -v` – idem e remove o volume `rag_data` (dados perdidos).
+   - Remover imagens manualmente com `docker rmi` se quiser desinstalar por completo.
+
+   ############################################################################################################################################
+   ### 2.5 Comandos úteis
+   ############################################################################################################################################
+
+   - Ver status dos containers: `docker compose ps`
+   - Ver logs da API: `docker compose logs api` (ou `-f` para seguir)
+   - Ver logs da UI: `docker compose logs ui` (ou `-f` para seguir)
+   - Reconstruir só um serviço após mudar código: `docker compose build api` e depois `docker compose up -d`
+
+   Observações:
+
+   - Dentro do Docker, a UI usa `API_BASE_URL=http://api:8000` (nome do serviço no compose).
+   - Os dados (Chroma e uploads) persistem no volume `rag_data`; em novo `up`, o índice e os PDFs enviados continuam disponíveis.
+   - **Não é necessário rodar `pip install -r requirements.txt` para o fluxo com Docker.**
 
 
 
