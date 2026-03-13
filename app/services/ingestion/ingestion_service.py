@@ -7,11 +7,12 @@ import uuid
 from fastapi import UploadFile
 from langchain_core.documents import Document
 
+from app.core.config import settings
+from app.core.dependencies import get_vector_store
 from app.services.ingestion.document_loader_service import DocumentLoaderService
 from app.services.ingestion.text_preprocessor import TextPreprocessor
 from app.services.ingestion.chunking_service import ChunkingService
 from app.services.ingestion.metadata_enricher import MetadataEnricher
-from app.services.ingestion.indexing_service import IndexingService
 
 
 class IngestionService:
@@ -23,14 +24,12 @@ class IngestionService:
         text_preprocessor: TextPreprocessor | None = None,
         chunking_service: ChunkingService | None = None,
         metadata_enricher: MetadataEnricher | None = None,
-        indexing_service: IndexingService | None = None,
     ) -> None:
-        self.upload_dir = "data/raw"
+        self.upload_dir = settings.upload_dir
         self._loader = document_loader or DocumentLoaderService()
         self._preprocessor = text_preprocessor or TextPreprocessor()
         self._chunking = chunking_service or ChunkingService()
         self._metadata_enricher = metadata_enricher or MetadataEnricher()
-        self._indexing = indexing_service or IndexingService()
 
     async def process_uploaded_file(self, file: UploadFile) -> dict:
         os.makedirs(self.upload_dir, exist_ok=True)
@@ -60,6 +59,6 @@ class IngestionService:
 
         chunks = self._chunking.split(documents_for_split)
         self._metadata_enricher.enrich(chunks)
-        self._indexing.index(chunks)
+        get_vector_store().add_documents(chunks)
 
         return {"file_path": file_path, "total_chunks": len(chunks)}

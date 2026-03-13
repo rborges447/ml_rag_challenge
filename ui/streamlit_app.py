@@ -1,10 +1,18 @@
 import pathlib
 import importlib.util
+import sys
+
+# Garante que o projeto está em sys.path quando o script é executado
+# diretamente por "streamlit run ui/streamlit_app.py" (evita ImportError em imports relativos).
+if __name__ == "__main__" or __package__ is None or __package__ == "":
+    _root = pathlib.Path(__file__).resolve().parents[1]
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
 
 import streamlit as st
 
-from .components.sidebar import render_sidebar
-from .state.session_state import init_session_state
+from ui.components.sidebar import render_sidebar
+from ui.state.session_state import init_session_state
 
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent

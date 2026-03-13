@@ -10,34 +10,24 @@ pip install -r requirements.txt
 
 ## Rodar a API
 
+Na raiz do projeto:
+
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+
+Em desenvolvimento, use `--reload` para recarregar ao alterar o código.
 
 Documentação interativa: http://localhost:8000/docs
 
 ## Interface Streamlit (chat)
 
-Para usar uma interface web simples (dark/clean) que consome a API:
+A UI consome a API apenas via HTTP. Rode API e UI em **processos separados** (dois terminais):
 
-1. Instale também as dependências opcionais:
+1. **Terminal 1 – API:** `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+2. **Terminal 2 – UI:** `streamlit run ui/streamlit_app.py`
 
-```bash
-pip install streamlit httpx
-```
-
-2. Rode a API e o Streamlit em processos separados (recomendado):
-
-```bash
-python run_api.py
-streamlit run streamlit_app.py
-```
-
-Ou, para uma experiência rápida em desenvolvimento, use o script de conveniência que orquestra os dois:
-
-```bash
-python main.py
-```
+Dependências (streamlit e httpx) já estão em `requirements.txt`.
 
 Na interface Streamlit:
 
@@ -77,8 +67,11 @@ python scripts/benchmark_retrieval.py
 
 A saída mostra, por pergunta, se houve acerto em top-1, top-3 e top-5 (critério: chunk contém os termos obrigatórios definidos no script).
 
-## Configuração relevante (.env ou variáveis de ambiente)
+## Configuração (.env)
 
-- **Chunking:** `CHUNK_SIZE` (default 1000), `CHUNK_OVERLAP` (default 200), `INTRO_PAGE_MAX` (páginas consideradas introdutórias).
-- **Retrieval:** `RETRIEVAL_INITIAL_K` (candidatos no Chroma, default 30), `RETRIEVAL_TOP_K_FINAL` (chunks finais, default 5), `RETRIEVAL_MAX_DISTANCE`, `RETRIEVAL_MIN_SCORE`.
-- **Chroma:** `CHROMA_PATH`, `CHROMA_COLLECTION_NAME`, `EMBEDDING_MODEL_NAME`.
+Copie `.env.example` para `.env` e ajuste conforme o ambiente. Variáveis principais:
+
+- **Backend – paths:** `CHROMA_PATH` (default `data/chroma`), `UPLOAD_DIR` (default `data/raw`).
+- **Chunking:** `CHUNK_SIZE`, `CHUNK_OVERLAP`, `INTRO_PAGE_MAX`.
+- **Retrieval:** `RETRIEVAL_INITIAL_K`, `RETRIEVAL_TOP_K_FINAL`, `RETRIEVAL_MAX_DISTANCE`, `RETRIEVAL_MIN_SCORE`.
+- **UI:** `API_BASE_URL` (URL da API, ex.: `http://localhost:8000`), `UI_HTTP_TIMEOUT_SECONDS`.

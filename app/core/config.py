@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     embedding_model_name: str = "all-MiniLM-L6-v2"
 
     # ========================
+    # Ingestão (paths)
+    # ========================
+    upload_dir: str = "data/raw"
+
+    # ========================
     # Chunking (ingestão)
     # ========================
     chunk_size: int = 1000
