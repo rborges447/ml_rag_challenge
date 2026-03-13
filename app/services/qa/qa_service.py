@@ -4,7 +4,7 @@ Fachada para Q&A.
 
 from app.services.retrieval import RetrievalService
 from app.services.qa.prompt_builder import build_prompt
-from app.clients.llm_client import LLMClient
+from app.clients import LLMClient
 
 
 def get_qa_service() -> "QAService":
