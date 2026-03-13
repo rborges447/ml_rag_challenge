@@ -1,20 +1,21 @@
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+
 fastapi
 uvicorn[standard]
 python-multipart
 pydantic
 pydantic-settings
-pytest
 httpx
 pymupdf
 chromadb
 sentence-transformers
+langchain-huggingface
 
-# LangChain (componentes para ingestão e retrieval)
 langchain>=0.3
 langchain-community>=0.3
 langchain-chroma>=0.1
 langchain-text-splitters>=0.3
 
-# LLMs
 google-genai
 streamlit

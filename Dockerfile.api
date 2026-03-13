@@ -2,15 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Dependências primeiro (melhor cache de layers)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Código da aplicação
-COPY app/ ./app/
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Garantir diretórios de dados (volume será montado em /app/data)
-RUN mkdir -p /app/data/raw /app/data/chroma
+COPY . .
 
 EXPOSE 8000
 
