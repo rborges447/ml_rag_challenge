@@ -24,7 +24,27 @@ O projeto usa variáveis de ambiente para configuração. Crie um arquivo `.env`
 
 3. **Não versionar o `.env`** – ele contém dados sensíveis. O `.env.example` serve só de modelo (sem chaves reais).
 
-## Rodar a API
+## Rodar com Docker
+
+**Pré-requisito:** Docker e Docker Compose instalados.
+
+1. Crie o `.env` a partir de `.env.example` e preencha pelo menos `GEMINI_API_KEY` (ver **Configuração do ambiente (.env)** acima).
+2. Na raiz do projeto:
+   ```bash
+   docker compose up -d
+   ```
+   (Ou `docker-compose up -d`, conforme sua versão.)
+3. **Acessos:**
+   - API: http://localhost:8000 (docs: http://localhost:8000/docs)
+   - UI: http://localhost:8501
+4. Para parar:
+   ```bash
+   docker compose down
+   ```
+
+Dentro do Docker, a UI usa `API_BASE_URL=http://api:8000` (nome do serviço no compose). Os dados (Chroma e uploads) persistem no volume `rag_data`; em novo `up`, o índice e os PDFs enviados continuam disponíveis.
+
+## Rodar a API (local)
 
 Na raiz do projeto:
 

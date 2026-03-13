@@ -1,0 +1,35 @@
+# Ambiente e cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.venv/
+venv/
+env/
+.env
+.env.local
+
+# Git e IDE
+.git/
+.gitignore
+.cursor/
+
+# Testes e ferramentas
+.pytest_cache/
+*.log
+tests/
+debug-*.log
+
+# Dados locais (no Docker os dados vêm do volume em runtime)
+data/
+
+# Documentação e planos (opcional; reduz tamanho da imagem)
+docs/
+*.md
+!README.md
+
+# Outros
+*.egg-info/
+.eggs/
+dist/
+build/
