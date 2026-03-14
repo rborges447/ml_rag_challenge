@@ -1,41 +1,43 @@
-from typing import Any, Dict, List
+from typing import Any
 
-from app.services.qa.qa_service import QAService
+from app.use_cases.answer_question import AnswerQuestionUseCase
 
 
-class DummyQAService(QAService):
-    def __init__(self) -> None:
-        # Não chama super().__init__ para evitar dependências reais
-        self._retrieved: List[Dict[str, Any]] = [
-            {"text": "conteúdo 1", "source": "doc1.pdf", "page": 1},
-            {"text": "conteúdo 2", "source": "doc1.pdf", "page": 2},
-            {"text": "conteúdo 3", "source": "doc2.pdf", "page": 1},
-        ]
+class MockRetrievalPipeline:
+    """Retorna chunks fixos para o teste."""
 
-        class DummyLLM:
-            def generate(self, prompt: str) -> str:
-                return "resposta gerada pela LLM"
-
-        self._llm = DummyLLM()
-
-    def retrieve(  # type: ignore[override]
+    def run(
         self,
         question: str,
         top_k: int | None = None,
         initial_k: int | None = None,
         max_distance: float | None = None,
         min_score: float | None = None,
-    ) -> List[Dict[str, Any]]:
-        chunks = self._retrieved
+    ) -> list[dict[str, Any]]:
+        chunks = [
+            {"text": "conteúdo 1", "source": "doc1.pdf", "page": 1},
+            {"text": "conteúdo 2", "source": "doc1.pdf", "page": 2},
+            {"text": "conteúdo 3", "source": "doc2.pdf", "page": 1},
+        ]
         if top_k is not None:
             chunks = chunks[:top_k]
         return chunks
 
 
-def test_qa_service_answer_returns_expected_structure() -> None:
-    service = DummyQAService()
+class MockGenerationPipeline:
+    """Retorna resposta fixa para o teste."""
 
-    result = service.answer("Pergunta de teste", top_k=2)
+    def run(self, question: str, chunks: list[dict]) -> str:
+        return "resposta gerada pela LLM"
+
+
+def test_answer_question_use_case_returns_expected_structure() -> None:
+    use_case = AnswerQuestionUseCase(
+        retrieval_pipeline=MockRetrievalPipeline(),
+        generation_pipeline=MockGenerationPipeline(),
+    )
+
+    result = use_case.run("Pergunta de teste", top_k=2)
 
     assert "answer" in result
     assert "references" in result
@@ -44,6 +46,5 @@ def test_qa_service_answer_returns_expected_structure() -> None:
     assert result["answer"] == "resposta gerada pela LLM"
     assert len(result["retrieved_chunks"]) == 2
 
-    # Referências devem ser únicas e baseadas em source/page
     refs = result["references"]
     assert all("doc1.pdf - page" in ref or "doc2.pdf - page" in ref for ref in refs)

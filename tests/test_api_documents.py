@@ -10,9 +10,9 @@ def test_upload_document_endpoint_accepts_pdf(test_client: TestClient, tmp_path:
     pdf_path.write_bytes(b"%PDF-1.4\n%EOF\n")
 
     with patch(
-        "app.api.routes_documents.ingestion_service.process_uploaded_file",
+        "app.api.routes_documents.document_ingestion_use_case.run",
         new_callable=AsyncMock,
-        return_value={"total_chunks": 5},
+        return_value={"total_chunks": 5, "file_path": str(pdf_path)},
     ):
         with pdf_path.open("rb") as f:
             files = {"file": ("dummy.pdf", f, "application/pdf")}

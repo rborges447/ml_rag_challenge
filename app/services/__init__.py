@@ -1,15 +1,18 @@
 """
-Serviços: ingestão, retrieval, QA e vector store.
+Serviços: pipelines, embeddings, vector store, ingestion, retrieval, qa.
 """
+from app.services.embeddings import EmbeddingService
+from app.services.pipelines import (
+    GenerationPipeline,
+    IngestionPipeline,
+    RetrievalPipeline,
+)
 from app.services.vector_store import VectorStore
-from app.services.ingestion import IngestionService
-from app.services.retrieval import RetrievalService
-from app.services.qa import QAService, get_qa_service
 
 __all__ = [
+    "EmbeddingService",
     "VectorStore",
-    "IngestionService",
-    "RetrievalService",
-    "QAService",
-    "get_qa_service",
+    "IngestionPipeline",
+    "RetrievalPipeline",
+    "GenerationPipeline",
 ]

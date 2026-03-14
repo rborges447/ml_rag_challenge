@@ -1,4 +1,6 @@
+"""
+QA: prompt builder para geração.
+"""
+from app.services.qa.prompt_builder import build_prompt
 
-from app.services.qa.qa_service import QAService, get_qa_service
-
-__all__ = ["QAService", "get_qa_service"]
+__all__ = ["build_prompt"]

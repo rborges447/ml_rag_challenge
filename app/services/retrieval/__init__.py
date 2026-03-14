@@ -1,6 +1,6 @@
 """
-Retrieval: busca vetorial e reranking.
+Retrieval: helpers (dedup, score) e ranking.
 """
-from app.services.retrieval.retrieval_service import RetrievalService
+from app.services.retrieval.ranking_service import RankingService, rerank
 
-__all__ = ["RetrievalService"]
+__all__ = ["RankingService", "rerank"]

@@ -1,11 +1,11 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.schemas import DocumentUploadResponse
-from app.services import IngestionService
+from app.use_cases import DocumentIngestionUseCase
 
 router = APIRouter(tags=["documents"])
 
-ingestion_service = IngestionService()
+document_ingestion_use_case = DocumentIngestionUseCase()
 
 
 @router.post("/documents", response_model=DocumentUploadResponse)
@@ -18,7 +18,7 @@ async def upload_documents(
             detail=f"Arquivo inválido: {file.filename}. Apenas PDFs são aceitos.",
         )
 
-    result = await ingestion_service.process_uploaded_file(file)
+    result = await document_ingestion_use_case.run(file)
 
     return DocumentUploadResponse(
         message="Document processed and indexed successfully",

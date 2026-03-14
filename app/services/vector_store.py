@@ -1,65 +1,85 @@
 """
-Vector store que encapsula Chroma via LangChain.
-Expõe interface do projeto: add_documents, get_retriever, similarity_search_with_score.
-Recebe embedding_function de forma injetável; se não for passado, usa default (HuggingFaceEmbeddings).
+Vector store que encapsula Chroma: apenas armazenamento e consulta de vetores.
+Não calcula embeddings; recebe vetores já calculados pelo EmbeddingService.
 """
 import uuid
-from typing import TYPE_CHECKING
 
-from langchain_chroma import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+import chromadb
 from langchain_core.documents import Document
 
 from app.core.config import settings
 
-if TYPE_CHECKING:
-    from langchain_core.embeddings import Embeddings
-
 
 class VectorStore:
-    """Encapsula Chroma (LangChain). Embedding pode ser injetado ou usa default."""
+    """Encapsula Chroma. Apenas persiste e consulta vetores (ids, embeddings, documents, metadatas)."""
 
     def __init__(
         self,
-        embedding_function: "Embeddings | None" = None,
         persist_directory: str | None = None,
         collection_name: str | None = None,
     ) -> None:
         self._persist_directory = persist_directory or settings.chroma_path
         self._collection_name = collection_name or settings.chroma_collection_name
-        if embedding_function is None:
-            embedding_function = HuggingFaceEmbeddings(
-                model_name=settings.embedding_model_name,
-            )
-        self._store = Chroma(
-            collection_name=self._collection_name,
-            embedding_function=embedding_function,
-            persist_directory=self._persist_directory,
+        self._client = chromadb.PersistentClient(path=self._persist_directory)
+        self._collection = self._client.get_or_create_collection(
+            name=self._collection_name,
+            metadata={"hnsw:space": "l2"},
         )
 
-    def add_documents(self, documents: list[Document]) -> list[str]:
+    def add_vectors(
+        self,
+        ids: list[str],
+        embeddings: list[list[float]],
+        documents: list[Document],
+    ) -> list[str]:
         """
-        Indexa documentos no Chroma. Gera ids únicos para cada documento.
-        Retorna a lista de ids gerados.
+        Indexa vetores no Chroma. Os vetores devem ter sido calculados pelo EmbeddingService.
+        Retorna a lista de ids.
         """
-        if not documents:
+        if not documents or not embeddings or not ids:
             return []
-        ids = [str(uuid.uuid4()) for _ in documents]
-        self._store.add_documents(documents, ids=ids)
+        if len(ids) != len(embeddings) or len(ids) != len(documents):
+            raise ValueError("ids, embeddings e documents devem ter o mesmo tamanho")
+        texts = [doc.page_content for doc in documents]
+        metadatas = []
+        for doc in documents:
+            meta = {}
+            for k, v in (doc.metadata or {}).items():
+                if v is None:
+                    continue
+                if isinstance(v, (str, int, float, bool)):
+                    meta[k] = v
+                else:
+                    meta[k] = str(v)
+            metadatas.append(meta)
+        self._collection.add(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)
         return ids
 
-    def get_retriever(self, k: int = 8, **kwargs: object) -> object:
-        """Retorna um retriever LangChain para uso externo."""
-        return self._store.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": k, **kwargs},
-        )
-
-    def similarity_search_with_score(
-        self, query: str, k: int = 8
+    def similarity_search_with_score_by_vector(
+        self,
+        query_embedding: list[float],
+        k: int = 8,
     ) -> list[tuple[Document, float]]:
         """
-        Busca por similaridade retornando (Document, distance).
-        O valor retornado pelo Chroma é distância L2 (menor = mais similar).
+        Busca por similaridade usando o vetor da pergunta (já calculado pelo EmbeddingService).
+        Retorna (Document, distance) com distância L2 (menor = mais similar).
         """
-        return self._store.similarity_search_with_score(query, k=k)
+        result = self._collection.query(
+            query_embeddings=[query_embedding],
+            n_results=k,
+            include=["documents", "metadatas", "distances"],
+        )
+        out: list[tuple[Document, float]] = []
+        if not result or not result["ids"] or not result["ids"][0]:
+            return out
+        docs = result["documents"][0]
+        metadatas = result["metadatas"][0] or []
+        distances = result["distances"][0]
+        for i, doc_text in enumerate(docs):
+            meta = metadatas[i] if i < len(metadatas) else {}
+            dist = float(distances[i]) if i < len(distances) else 0.0
+            out.append((
+                Document(page_content=doc_text or "", metadata=meta),
+                dist,
+            ))
+        return out
