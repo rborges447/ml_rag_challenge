@@ -2,25 +2,14 @@
 Pipeline de pergunta: embed query → search → filter → dedup → rerank → format → prompt → LLM → references.
 Centraliza o fluxo completo da pergunta (substitui RetrievalPipeline + GenerationPipeline + AnswerQuestionUseCase).
 """
-import time
-
 from app.clients import LLMClient
 from app.core.config import settings
 from app.core.dependencies import get_vector_store
-from app.core.logging import get_logger
+from app.core.log_decorators import log_question_run
 from app.embeddings import EmbeddingService
 from app.qa.prompt_builder import build_prompt
 from app.retrieval.ranking_service import rerank
 from app.retrieval.retrieval_helpers import _deduplicate_by_similarity, _distance_to_score
-
-
-def _truncate(s: str, max_len: int = 80) -> str:
-    if len(s) <= max_len:
-        return s
-    return s[:max_len] + "..."
-
-
-logger = get_logger(__name__)
 
 
 class QuestionPipeline:
@@ -36,6 +25,7 @@ class QuestionPipeline:
         self._vector_store = vector_store or get_vector_store()
         self._llm_client = llm_client or LLMClient()
 
+    @log_question_run
     def run(
         self,
         question: str,
@@ -48,14 +38,6 @@ class QuestionPipeline:
         """
         Retorna {"answer": str, "references": list[str], "retrieved_chunks": list[dict]}.
         """
-        t0 = time.perf_counter()
-        rid = request_id or ""
-        logger.info(
-            "request_id=%s | question pipeline início pergunta=%s",
-            rid,
-            _truncate(question),
-        )
-
         initial_k = initial_k if initial_k is not None else settings.retrieval_initial_k
         top_k = top_k if top_k is not None else settings.retrieval_top_k_final
         max_distance = max_distance if max_distance is not None else settings.retrieval_max_distance
@@ -96,14 +78,7 @@ class QuestionPipeline:
                 "section_hint": meta.get("section_hint"),
             })
 
-        logger.info(
-            "request_id=%s | resultados recuperados=%s",
-            rid,
-            len(retrieved_chunks),
-        )
-        logger.debug("request_id=%s | montando prompt com %s chunks", rid, len(retrieved_chunks))
         prompt = build_prompt(question, retrieved_chunks)
-        logger.info("request_id=%s | chamando LLM", rid)
         answer = self._llm_client.generate(prompt)
 
         references_set: set[str] = set()
@@ -113,13 +88,13 @@ class QuestionPipeline:
             if source is not None and page is not None:
                 references_set.add(f"{source} - page {page}")
         references = sorted(references_set)
-        logger.info("request_id=%s | referências finais=%s", rid, len(references))
-
-        elapsed = time.perf_counter() - t0
-        logger.info("request_id=%s | pipeline concluído elapsed=%.3fs", rid, elapsed)
 
         return {
             "answer": answer,
             "references": references,
             "retrieved_chunks": retrieved_chunks,
+            "_log": {
+                "retrieved": len(retrieved_chunks),
+                "references": len(references),
+            },
         }

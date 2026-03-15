@@ -6,9 +6,7 @@ import chromadb
 from langchain_core.documents import Document
 
 from app.core.config import settings
-from app.core.logging import get_logger
-
-logger = get_logger(__name__)
+from app.core.log_decorators import log_vector_store_add, log_vector_store_search
 
 
 class VectorStore:
@@ -27,6 +25,7 @@ class VectorStore:
             metadata={"hnsw:space": "l2"},
         )
 
+    @log_vector_store_add
     def add_vectors(
         self,
         ids: list[str],
@@ -54,9 +53,9 @@ class VectorStore:
                     meta[k] = str(v)
             metadatas.append(meta)
         self._collection.add(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)
-        logger.info("add_vectors quantidade=%s", len(ids))
         return ids
 
+    @log_vector_store_search
     def similarity_search_with_score_by_vector(
         self,
         query_embedding: list[float],
@@ -84,5 +83,4 @@ class VectorStore:
                 Document(page_content=doc_text or "", metadata=meta),
                 dist,
             ))
-        logger.info("similarity_search_with_score_by_vector k=%s resultados=%s", k, len(out))
         return out
