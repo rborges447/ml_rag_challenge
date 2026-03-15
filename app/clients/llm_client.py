@@ -1,10 +1,9 @@
-import logging
-
-from app.core.config import settings
 from app.clients.providers.gemini_provider import GeminiProvider
 from app.clients.providers.openai_provider import OpenAIProvider
+from app.core.config import settings
+from app.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class LLMClient:
@@ -41,6 +40,12 @@ class LLMClient:
         last_error = None
 
         for provider in self.providers:
+            if last_error is not None:
+                logger.info(
+                    "Executando fallback para provider %s:%s",
+                    provider.provider_name,
+                    provider.model_name,
+                )
             if not provider.is_available():
                 logger.warning(
                     "Skipping unavailable provider %s:%s",
@@ -51,17 +56,15 @@ class LLMClient:
 
             try:
                 logger.info(
-                    "Trying provider %s:%s",
+                    "Tentando provider LLM: %s:%s",
                     provider.provider_name,
                     provider.model_name,
                 )
                 response = provider.generate(prompt)
-
                 self.last_used_provider = provider.provider_name
                 self.last_used_model = provider.model_name
-
                 logger.info(
-                    "Success with provider %s:%s",
+                    "Resposta gerada com sucesso pelo provider %s:%s",
                     self.last_used_provider,
                     self.last_used_model,
                 )
@@ -69,11 +72,12 @@ class LLMClient:
 
             except Exception as exc:
                 last_error = exc
-                logger.warning(
-                    "Provider %s:%s failed: %s",
+                logger.exception(
+                    "Falha no provider %s:%s: %s",
                     provider.provider_name,
                     provider.model_name,
                     exc,
                 )
 
+        logger.error("Todos os providers LLM falharam")
         raise RuntimeError(f"All LLM providers failed: {last_error}")

@@ -2,12 +2,13 @@
 Vector store que encapsula Chroma: apenas armazenamento e consulta de vetores.
 Não calcula embeddings; recebe vetores já calculados pelo EmbeddingService.
 """
-import uuid
-
 import chromadb
 from langchain_core.documents import Document
 
 from app.core.config import settings
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class VectorStore:
@@ -53,6 +54,7 @@ class VectorStore:
                     meta[k] = str(v)
             metadatas.append(meta)
         self._collection.add(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)
+        logger.info("add_vectors quantidade=%s", len(ids))
         return ids
 
     def similarity_search_with_score_by_vector(
@@ -82,4 +84,5 @@ class VectorStore:
                 Document(page_content=doc_text or "", metadata=meta),
                 dist,
             ))
+        logger.info("similarity_search_with_score_by_vector k=%s resultados=%s", k, len(out))
         return out

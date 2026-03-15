@@ -7,6 +7,10 @@ from difflib import SequenceMatcher
 
 from langchain_core.documents import Document
 
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 def _normalize_for_match(s: str) -> str:
     if not s:
@@ -96,6 +100,7 @@ def rerank(
     penalty_near_duplicate: bool = True,
 ) -> list[tuple[Document, float, float]]:
     """Retorna lista de (Document, distance_original, rerank_score). Ordenado por rerank_score decrescente."""
+    logger.debug("rerank candidatos=%s", len(candidates))
     if not candidates:
         return []
     query_tokens = _tokenize(query)

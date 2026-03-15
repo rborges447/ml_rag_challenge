@@ -5,6 +5,11 @@ class Settings(BaseSettings):
     app_name: str = "ML Engineering Challenge - RAG API"
 
     # ========================
+    # Logging
+    # ========================
+    log_level: str = "INFO"
+
+    # ========================
     # Vector Store / Embeddings
     # ========================
     openai_api_key: str | None = None
@@ -37,9 +42,10 @@ class Settings(BaseSettings):
     # ========================
     llm_timeout_seconds: int = 60
     llm_route: str = (
-        "gemini:gemini-3-flash,"
+        "openai:gpt-4.1-mini,"
         "gemini:gemini-2.5-flash,"
-        "openai:gpt-4.1-mini"
+        "gemini:gemini-3-flash,"
+        
     )
 
     # Gemini
