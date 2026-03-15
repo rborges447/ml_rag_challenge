@@ -24,6 +24,6 @@ def get_vector_store():
     """VectorStore sem embedding (apenas armazena e consulta vetores). Os pipelines usam EmbeddingService."""
     global _vector_store
     if _vector_store is None:
-        from app.services.vector_store import VectorStore
+        from app.storage.vector_store import VectorStore
         _vector_store = VectorStore()
     return _vector_store

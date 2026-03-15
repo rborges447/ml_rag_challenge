@@ -1,6 +1,6 @@
 """
 Serviço de embeddings: única responsabilidade é calcular vetores.
-Usado pelo pipeline de ingestão (após metadata enricher) e pelo pipeline de retrieval (embed da pergunta).
+Usado pelo pipeline de ingestão (após metadata enricher) e pelo pipeline de pergunta (embed da query).
 """
 from langchain_community.embeddings import HuggingFaceEmbeddings
 

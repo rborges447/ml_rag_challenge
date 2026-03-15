@@ -1,16 +1,18 @@
 """
-Pipeline 1 — Ingestão: loader → preprocessor → chunking → metadata enricher → embedding → vector store.
+Pipeline de ingestão: loader → preprocessor → chunking → metadata enricher → embedding → vector store.
 """
 import uuid
 
 from langchain_core.documents import Document
 
 from app.core.dependencies import get_vector_store
-from app.services.embeddings import EmbeddingService
-from app.services.ingestion.chunking_service import ChunkingService
-from app.services.ingestion.document_loader_service import DocumentLoaderService
-from app.services.ingestion.metadata_enricher import MetadataEnricher
-from app.services.ingestion.text_preprocessor import TextPreprocessor
+from app.embeddings import EmbeddingService
+from app.ingestion import (
+    ChunkingService,
+    DocumentLoaderService,
+    MetadataEnricher,
+    TextPreprocessor,
+)
 
 
 class IngestionPipeline:

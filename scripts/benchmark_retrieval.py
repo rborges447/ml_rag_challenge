@@ -12,7 +12,7 @@ _root = Path(__file__).resolve().parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from app.services.pipelines import RetrievalPipeline
+from app.pipelines import QuestionPipeline
 
 
 # Perguntas e termos que devem aparecer em pelo menos um chunk relevante (minúsculas)
@@ -51,13 +51,14 @@ def run_benchmark(top_k: int = 5) -> list[dict]:
     Para cada pergunta, chama retrieval com top_k=top_k e verifica top-1, top-3, top-5.
     Retorna lista de resultados por pergunta.
     """
-    pipeline = RetrievalPipeline()
+    pipeline = QuestionPipeline()
     results = []
 
     for item in BENCHMARK_QUESTIONS:
         question = item["question"]
         required = item["required_terms"]
-        chunks = pipeline.run(question, top_k=top_k)
+        out = pipeline.run(question, top_k=top_k)
+        chunks = out.get("retrieved_chunks") or []
         texts = [c.get("text", "") or "" for c in chunks]
 
         top1 = len(texts) >= 1 and _chunk_is_relevant(texts[0], required)

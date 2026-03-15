@@ -1,4 +1,4 @@
-from app.services.qa.prompt_builder import build_prompt
+from app.qa.prompt_builder import build_prompt
 
 
 def test_build_prompt_includes_question_and_context() -> None:

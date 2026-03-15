@@ -2,7 +2,7 @@ from pathlib import Path
 
 from langchain_core.documents import Document
 
-from app.services.vector_store import VectorStore
+from app.storage.vector_store import VectorStore
 
 
 class FakeEmbeddingService:

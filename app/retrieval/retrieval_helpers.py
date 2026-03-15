@@ -1,6 +1,6 @@
 """
 Helpers de retrieval: dedup e conversão de distância para score.
-Usados pelo RetrievalPipeline.
+Usados pelo QuestionPipeline.
 """
 from difflib import SequenceMatcher
 

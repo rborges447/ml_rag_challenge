@@ -1,43 +1,37 @@
-from typing import Any
+from unittest.mock import MagicMock
 
-from app.use_cases.answer_question import AnswerQuestionUseCase
+from langchain_core.documents import Document
+
+from app.pipelines import QuestionPipeline
 
 
-class MockRetrievalPipeline:
+class MockVectorStore:
     """Retorna chunks fixos para o teste."""
 
-    def run(
-        self,
-        question: str,
-        top_k: int | None = None,
-        initial_k: int | None = None,
-        max_distance: float | None = None,
-        min_score: float | None = None,
-    ) -> list[dict[str, Any]]:
-        chunks = [
-            {"text": "conteúdo 1", "source": "doc1.pdf", "page": 1},
-            {"text": "conteúdo 2", "source": "doc1.pdf", "page": 2},
-            {"text": "conteúdo 3", "source": "doc2.pdf", "page": 1},
-        ]
-        if top_k is not None:
-            chunks = chunks[:top_k]
-        return chunks
+    def similarity_search_with_score_by_vector(
+        self, query_embedding: list[float], k: int = 8
+    ) -> list[tuple[Document, float]]:
+        return [
+            (Document(page_content="conteúdo 1", metadata={"source": "doc1.pdf", "page": 1}), 0.1),
+            (Document(page_content="conteúdo 2", metadata={"source": "doc1.pdf", "page": 2}), 0.2),
+            (Document(page_content="conteúdo 3", metadata={"source": "doc2.pdf", "page": 1}), 0.3),
+        ][:k]
 
 
-class MockGenerationPipeline:
+class MockLLMClient:
     """Retorna resposta fixa para o teste."""
 
-    def run(self, question: str, chunks: list[dict]) -> str:
+    def generate(self, prompt: str) -> str:
         return "resposta gerada pela LLM"
 
 
-def test_answer_question_use_case_returns_expected_structure() -> None:
-    use_case = AnswerQuestionUseCase(
-        retrieval_pipeline=MockRetrievalPipeline(),
-        generation_pipeline=MockGenerationPipeline(),
+def test_question_pipeline_returns_expected_structure() -> None:
+    pipeline = QuestionPipeline(
+        vector_store=MockVectorStore(),
+        llm_client=MockLLMClient(),
     )
 
-    result = use_case.run("Pergunta de teste", top_k=2)
+    result = pipeline.run("Pergunta de teste", top_k=2)
 
     assert "answer" in result
     assert "references" in result
