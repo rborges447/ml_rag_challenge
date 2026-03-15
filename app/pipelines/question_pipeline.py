@@ -4,7 +4,7 @@ Centraliza o fluxo completo da pergunta (substitui RetrievalPipeline + Generatio
 """
 from app.clients import LLMClient
 from app.core.config import settings
-from app.core.dependencies import get_vector_store
+from app.core.dependencies import get_embedding_service, get_vector_store
 from app.core.log_decorators import log_question_run
 from app.embeddings import EmbeddingService
 from app.qa.prompt_builder import build_prompt
@@ -21,7 +21,7 @@ class QuestionPipeline:
         vector_store=None,
         llm_client: LLMClient | None = None,
     ) -> None:
-        self._embedding_service = embedding_service or EmbeddingService()
+        self._embedding_service = embedding_service or get_embedding_service()
         self._vector_store = vector_store or get_vector_store()
         self._llm_client = llm_client or LLMClient()
 

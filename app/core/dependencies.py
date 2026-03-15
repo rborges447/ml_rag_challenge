@@ -27,3 +27,15 @@ def get_vector_store():
         from app.storage.vector_store import VectorStore
         _vector_store = VectorStore()
     return _vector_store
+
+
+_embedding_service = None
+
+
+def get_embedding_service():
+    """Singleton do EmbeddingService. Usado pelos pipelines de ingestão e pergunta quando não recebem injeção."""
+    global _embedding_service
+    if _embedding_service is None:
+        from app.embeddings import EmbeddingService
+        _embedding_service = EmbeddingService()
+    return _embedding_service

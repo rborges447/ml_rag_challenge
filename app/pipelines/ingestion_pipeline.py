@@ -5,7 +5,7 @@ import uuid
 
 from langchain_core.documents import Document
 
-from app.core.dependencies import get_vector_store
+from app.core.dependencies import get_embedding_service, get_vector_store
 from app.core.log_decorators import log_ingestion_run
 from app.embeddings import EmbeddingService
 from app.ingestion import (
@@ -32,7 +32,7 @@ class IngestionPipeline:
         self._preprocessor = text_preprocessor or TextPreprocessor()
         self._chunking = chunking_service or ChunkingService()
         self._metadata_enricher = metadata_enricher or MetadataEnricher()
-        self._embedding_service = embedding_service or EmbeddingService()
+        self._embedding_service = embedding_service or get_embedding_service()
         self._vector_store = vector_store or get_vector_store()
 
     @log_ingestion_run
