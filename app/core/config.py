@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     # ========================
     chroma_path: str = "data/chroma"
     chroma_collection_name: str = "documents"
+    # Modelo multilíngue por default (EN↔PT). Ao trocar, é necessária re-indexação (re-upload dos PDFs).
     embedding_model_name: str = "all-MiniLM-L6-v2"
 
     # ========================

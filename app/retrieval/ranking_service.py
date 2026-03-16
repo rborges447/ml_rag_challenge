@@ -116,6 +116,30 @@ def _looks_like_title_only(chunk_text: str) -> bool:
     return False
 
 
+def _is_conceptual_question(query: str) -> bool:
+    """True se a pergunta pede explicação conceitual (why, advantages, por que, etc.)."""
+    if not query or not query.strip():
+        return False
+    q = _normalize_for_match(query)
+    # Inglês
+    if q.startswith("why ") or q.startswith("why is ") or q.startswith("why are "):
+        return True
+    if " what are the advantages " in f" {q} " or " what are the benefits " in f" {q} ":
+        return True
+    if " why is " in f" {q} " or " why are " in f" {q} ":
+        return True
+    if " the most widely used " in q or " the most common " in q:
+        return True
+    # Português
+    if q.startswith("por que ") or " por que " in f" {q} ":
+        return True
+    if q.startswith("qual a vantagem ") or " qual a vantagem " in f" {q} ":
+        return True
+    if " mais utilizado " in q or " mais utilizados " in q:
+        return True
+    return False
+
+
 def rerank(
     query: str,
     candidates: list[tuple[Document, float]],
@@ -161,7 +185,9 @@ def rerank(
             rerank_s -= PENALTY_SHORT_CHUNK
         if _looks_like_title_only(text):
             rerank_s -= PENALTY_TITLE_ONLY
-        if meta.get("is_intro_page") is True:
+        # Não penalizar intro em perguntas conceituais (why, por que, vantagens):
+        # a explicação costuma estar na introdução.
+        if meta.get("is_intro_page") is True and not _is_conceptual_question(query):
             rerank_s -= PENALTY_INTRO_PAGE
         scored.append((doc, distance, max(0.0, rerank_s)))
 

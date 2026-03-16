@@ -13,7 +13,10 @@ def _is_intro_page(page: int, text: str) -> bool:
     if page <= getattr(settings, "intro_page_max", 2):
         return True
     lower = text.lower()[:1500]
-    intro_markers = ("introdução", "introducao", "sumário", "sumario", "capítulo 1", "capitulo 1")
+    intro_markers = (
+        "introdução", "introducao", "sumário", "sumario", "capítulo 1", "capitulo 1",
+        "introduction", "overview", "summary",
+    )
     if any(m in lower for m in intro_markers) and len(text.split()) < 200:
         return True
     return False

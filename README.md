@@ -22,6 +22,8 @@ O sistema é composto por uma **API FastAPI** e uma **UI em Streamlit**, orquest
 - **Perguntas e respostas (RAG)**
   - Endpoint para perguntas (`POST /question`).
   - Retrieval vetorial com ChromaDB + reranking heurístico sensível ao tipo de pergunta (ex.: “o que é …”).
+  - **Expansão de query** (EN→PT): termos técnicos em inglês são expandidos com equivalentes em português antes do embed, melhorando retrieval cross-lingual (pergunta em EN × documento em PT).
+  - **Rerank para perguntas conceituais**: perguntas do tipo "why", "por que", "vantagens" não sofrem penalidade em chunks de página introdutória, onde costuma estar a explicação.
   - Deduplicação de chunks similares.
   - Montagem de prompt contextualizado (com referências de origem/página).
   - Geração de resposta com LLM (Gemini / OpenAI) com estratégia de **fallback** entre múltiplos modelos.
@@ -92,13 +94,13 @@ A arquitetura é organizada em camadas de domínio e infraestrutura dentro do di
 
 - **Retrieval (`app/retrieval/`)**
   - `RetrievalService`: encapsula embedding de query/documentos e consulta ao `VectorStore`:
-    - Gera embedding da pergunta.
-    - Consulta ao ChromaDB (`VectorStore.query_nearest`).
+    - **Expansão de query** (`query_expansion.py`): antes do embed, a pergunta é expandida com termos em PT (mapeamento EN→PT editável), melhorando match com documentos em português.
+    - Gera embedding da pergunta (expandida) e consulta ao ChromaDB (`VectorStore.query_nearest`).
     - Filtra candidatos por distância e texto vazio.
     - Deduplicação (_text similarity_) via `_deduplicate_by_similarity`.
     - Rerank heurístico via `rerank` (`RankingService`).
-  - `_EmbeddingModel` (`embedding.py`): wrapper de `HuggingFaceEmbeddings` configurado por `settings.embedding_model_name`.
-  - `ranking_service.py`: heurísticas de rerank (bônus por termos, padrões de definição, penalidade para títulos/intro/duplicatas).
+  - `_EmbeddingModel` (`embedding.py`): wrapper de `HuggingFaceEmbeddings` configurado por `settings.embedding_model_name`. Modelos E5 (`intfloat/multilingual-e5-base`) usam prefixos `"query: "` / `"passage: "` automaticamente. **Ao trocar o modelo de embedding é necessária re-indexação** (re-upload dos PDFs).
+  - `ranking_service.py`: heurísticas de rerank (bônus por termos, padrões de definição, penalidade para títulos/intro/duplicatas). Para perguntas conceituais ("why", "por que", "vantagens"), não aplica penalidade em chunks de página introdutória.
 
 - **Vector Store (`app/storage/vector_store.py`)**
   - Encapsula `chromadb.PersistentClient` com `collection` configurada por `CHROMA_PATH` e `CHROMA_COLLECTION_NAME`.
@@ -216,6 +218,10 @@ Edite o arquivo `.env` e ajuste pelo menos:
 CHROMA_PATH=data/chroma
 UPLOAD_DIR=data/raw
 
+# Modelo de embedding (HuggingFace). Ao trocar, re-indexe (re-upload dos PDFs).
+# all-MiniLM-L6-v2 = mais rápido, menor; multilingual-e5-base = multilíngue EN↔PT, mais lento.
+EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
+
 # Logging
 LOG_LEVEL=INFO
 
@@ -230,7 +236,8 @@ OPENAI_API_KEY=SEU_TOKEN_OPENAI_AQUI
 # UI (Streamlit)
 # Para uso local:
 API_BASE_URL=http://localhost:8000
-UI_HTTP_TIMEOUT_SECONDS=60
+# Timeout das chamadas HTTP da UI (upload pode demorar com modelo E5; use 600 se necessário)
+HTTP_TIMEOUT_SECONDS=600
 ```
 
 > Sem `GEMINI_API_KEY` e/ou `OPENAI_API_KEY`, o `LLMClient` não consegue configurar nenhum provider e o pipeline de perguntas irá falhar.
@@ -250,7 +257,7 @@ Pré-requisitos:
 Na raiz do projeto:
 
 ```bash
-docker compose up --build
+docker compose up -d --build
 ```
 
 Isso irá:
@@ -461,6 +468,11 @@ Resposta esperada (estrutura simplificada):
 - **Nenhuma resposta relevante / poucas referências**  
   - Certifique-se de que você fez upload de PDFs relacionados ao assunto da pergunta.  
   - Reindexe os documentos se tiver alterado configurações de embedding ou armazenamento.
+
+- **Upload demora muito ou “carrega infinitamente”**  
+  - O modelo de embedding padrão pode ser trocado via `EMBEDDING_MODEL_NAME` no `.env`. O modelo multilíngue (`intfloat/multilingual-e5-base`) é maior e mais lento: na primeira execução o download pode levar vários minutos; o embed de muitos chunks também demora mais.  
+  - Aumente o timeout da UI: `HTTP_TIMEOUT_SECONDS=600` (ou mais).  
+  - Para uploads mais rápidos, use `EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2`. Após trocar o modelo, é necessária **re-indexação** (re-upload dos PDFs).
 
 Com as instruções acima, alguém que nunca usou o projeto deve conseguir:
 

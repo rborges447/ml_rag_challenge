@@ -5,6 +5,7 @@ O embedding é lógica interna (módulo retrieval/embedding.py); expõe embed_do
 from langchain_core.documents import Document
 
 from app.retrieval.embedding import _EmbeddingModel
+from app.retrieval.query_expansion import expand_query_for_embed
 from app.retrieval.ranking_service import rerank
 from app.retrieval.retrieval_helpers import _deduplicate_by_similarity, _distance_to_score
 
@@ -36,7 +37,8 @@ class RetrievalService:
         Embed da pergunta, busca no vector store, filter, dedup, rerank.
         Retorna list[dict] no formato retrieved_chunks (text, source, page, distance, score, rerank_score, ...).
         """
-        query_embedding = self._embed_query(question)
+        query_for_embed = expand_query_for_embed(question)
+        query_embedding = self._embed_query(query_for_embed)
         raw_results = self._vector_store.query_nearest(query_embedding, k=initial_k)
 
         candidates: list[tuple[Document, float]] = []
