@@ -39,6 +39,11 @@ BONUS_TERM_PRESENT = 0.08
 BONUS_CAP_TERMS = 0.35
 BONUS_DEFINITION_PATTERN = 0.25
 BONUS_EXACT_PHRASE = 0.2
+
+# Bônus adicional para perguntas/trechos com muitos números/medidas técnicas
+BONUS_NUMERIC_MATCH = 0.18
+BONUS_CAP_NUMERIC = 0.4
+
 PENALTY_SHORT_CHUNK = 0.12
 PENALTY_TITLE_ONLY = 0.1
 PENALTY_INTRO_PAGE = 0.15
@@ -46,6 +51,23 @@ PENALTY_NEAR_DUPLICATE = 0.2
 MIN_CHARS_FOR_PENALTY = 100
 TITLE_LINE_MAX_CHARS = 80
 NEAR_DUPLICATE_THRESHOLD = 0.88
+
+
+def _numeric_tokens(s: str) -> set[str]:
+    """Extrai tokens puramente numéricos (ex.: '1800', '12000')."""
+    if not s:
+        return set()
+    return set(re.findall(r"\b\d+(?:[.,]\d+)?\b", s))
+
+
+TECH_UNITS = ("rpm", "r.p.m", "hz", "khz", "hours", "hrs", "kw", "kva")
+
+
+def _contains_tech_units(s: str) -> bool:
+    if not s:
+        return False
+    norm = _normalize_for_match(s)
+    return any(u in norm for u in TECH_UNITS)
 
 
 def _is_definition_question(query: str) -> bool:
@@ -104,6 +126,7 @@ def rerank(
     if not candidates:
         return []
     query_tokens = _tokenize(query)
+    query_nums = _numeric_tokens(query)
     definition_target = _extract_definition_target(query) if _is_definition_question(query) else None
     scored: list[tuple[Document, float, float]] = []
 
@@ -114,11 +137,27 @@ def rerank(
         chunk_tokens = _tokenize(text)
         overlap = query_tokens & chunk_tokens
         rerank_s += min(len(overlap) * BONUS_TERM_PRESENT, BONUS_CAP_TERMS)
+
+        # Heurística adicional: alinhamento de números/medidas (RPM, horas, etc.)
+        chunk_nums = _numeric_tokens(text)
+        numeric_overlap = query_nums & chunk_nums
+        if numeric_overlap:
+            # Mais números em comum → maior bônus, mas capado.
+            rerank_s += min(len(numeric_overlap) * BONUS_NUMERIC_MATCH, BONUS_CAP_NUMERIC)
+
+        # Se a pergunta e o chunk mencionam unidades técnicas (rpm, hz, hours...),
+        # damos um pequeno bônus adicional.
+        if _contains_tech_units(query) and _contains_tech_units(text):
+            rerank_s += BONUS_TERM_PRESENT
         if definition_target and _has_definition_pattern(text, definition_target):
             rerank_s += BONUS_DEFINITION_PATTERN
         if _has_exact_phrase(text, query):
             rerank_s += BONUS_EXACT_PHRASE
-        if meta.get("char_count", len(text)) < MIN_CHARS_FOR_PENALTY:
+        # Penalização para chunks muito curtos, exceto quando forem linhas
+        # densas de tabela/lista com números ou chunks extraídos como tabela (is_table).
+        char_count = meta.get("char_count", len(text))
+        looks_table_like = (bool(chunk_nums) and "\n" in text) or meta.get("is_table") is True
+        if char_count < MIN_CHARS_FOR_PENALTY and not looks_table_like:
             rerank_s -= PENALTY_SHORT_CHUNK
         if _looks_like_title_only(text):
             rerank_s -= PENALTY_TITLE_ONLY

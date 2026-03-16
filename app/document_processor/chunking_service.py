@@ -12,10 +12,16 @@ class ChunkingService:
 
     def __init__(self) -> None:
         self._splitter = RecursiveCharacterTextSplitter(
+            # Valores default vêm de settings, mas aqui priorizamos capturar
+            # blocos técnicos (tabelas/listas) de forma mais inteira.
             chunk_size=settings.chunk_size,
             chunk_overlap=settings.chunk_overlap,
             length_function=len,
-            separators=["\n\n", "\n", ". ", " ", ""],
+            # Removemos o separador por sentença (". ") porque ele tende a
+            # quebrar linhas de tabela ou listas técnicas em pontos ruins.
+            # Mantemos prioridade em quebras duplas/simples de linha e depois
+            # espaço, deixando "" apenas como último recurso.
+            separators=["\n\n", "\n", " ", ""],
         )
 
     def split(self, documents: list[Document]) -> list[Document]:

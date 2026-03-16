@@ -1,26 +1,17 @@
 """
-Carrega PDF com LangChain (PyMuPDFLoader) e retorna páginas em formato utilizável pelo pipeline.
+Carrega PDF de forma table-aware: extrai tabelas (cabeçalho + linhas) como blocos únicos
+e texto narrativo por página, para preservar estrutura no RAG.
 """
-from langchain_community.document_loaders import PyMuPDFLoader
+from app.document_processor.table_aware_loader import load_table_aware
 
 
 class DocumentLoaderService:
-    """Carrega PDF e retorna list[{"page": int (1-indexed), "text": str}]."""
+    """Carrega PDF e retorna list[{"page": int (1-indexed), "text": str, "is_table": bool}]."""
 
     def load(self, file_path: str, source_name: str) -> list[dict]:
         """
-        Carrega o PDF em file_path e retorna lista de dicts com page (1-indexed) e text.
-        source_name é preservado para uso posterior (ex.: metadados).
+        Carrega o PDF em file_path e retorna lista de blocos com page (1-indexed), text e is_table.
+        Blocos com is_table=True vêm de find_tables() (cabeçalho + linhas em um único texto).
         """
-        loader = PyMuPDFLoader(file_path)
-        raw_documents = loader.load()
-        pages_list = []
-        for doc in raw_documents:
-            p = doc.metadata.get("page", 0)
-            page_num = p + 1 if isinstance(p, int) else p
-            pages_list.append({
-                "page": page_num,
-                "text": doc.page_content or "",
-            })
-        return pages_list
+        return load_table_aware(file_path, source_name)
 

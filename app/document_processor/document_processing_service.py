@@ -40,36 +40,55 @@ class DocumentProcessingService:
         request_id: str | None = None,
     ) -> dict:
         """
-        Executa o fluxo interno de processamento: carrega PDF, preprocessa, faz chunking
-        e enriquece metadados.
-
-        Retorna um dicionário com:
-        - "chunks": lista de Document enriquecidos,
-        - "_log": {"pages": int, "chunks": int}.
+        Executa o fluxo interno de processamento: carrega PDF (table-aware), preprocessa
+        apenas texto narrativo, faz chunking só em narrativo, e mantém cada tabela como
+        um chunk único (cabeçalho + linhas). Enriquece metadados de todos os chunks.
         """
-        pages_list = self._loader.load(file_path, source_name)
-        pages_list = self._preprocessor.preprocess_pages(pages_list)
+        blocks = self._loader.load(file_path, source_name)
+        table_blocks = [b for b in blocks if b.get("is_table")]
+        narrative_blocks = [b for b in blocks if not b.get("is_table")]
+
+        narrative_preprocessed = self._preprocessor.preprocess_pages(narrative_blocks)
 
         documents_for_split = []
-        for p in pages_list:
+        for p in narrative_preprocessed:
             page_num = p["page"]
-            text = p["text"]
+            text = p.get("text", "")
             if not text.strip():
                 continue
             documents_for_split.append(
                 Document(
                     page_content=text,
-                    metadata={"source": source_name, "page": page_num},
+                    metadata={"source": source_name, "page": page_num, "is_table": False},
                 )
             )
 
-        chunks = self._chunking.split(documents_for_split)
+        chunks_narrative = self._chunking.split(documents_for_split) if documents_for_split else []
+
+        table_chunks = []
+        for b in table_blocks:
+            text = b.get("text", "")
+            if not text.strip():
+                continue
+            table_chunks.append(
+                Document(
+                    page_content=text,
+                    metadata={
+                        "source": source_name,
+                        "page": b["page"],
+                        "is_table": True,
+                    },
+                )
+            )
+
+        chunks = chunks_narrative + table_chunks
         self._metadata_enricher.enrich(chunks)
 
+        unique_pages = len({p["page"] for p in blocks})
         return {
             "chunks": chunks,
             "_log": {
-                "pages": len(pages_list),
+                "pages": unique_pages,
                 "chunks": len(chunks),
             },
         }
