@@ -63,3 +63,35 @@ def get_llm_client():
         from app.clients import LLMClient
         _llm_client = LLMClient()
     return _llm_client
+
+
+_ingestion_pipeline = None
+_question_pipeline = None
+
+
+def get_ingestion_pipeline():
+    """Singleton do IngestionPipeline (documento → vetores)."""
+    global _ingestion_pipeline
+    if _ingestion_pipeline is None:
+        from app.pipelines import IngestionPipeline
+
+        _ingestion_pipeline = IngestionPipeline(
+            document_processing_service=get_document_processing_service(),
+            retrieval_service=get_retrieval_service(),
+            vector_store=get_vector_store(),
+        )
+    return _ingestion_pipeline
+
+
+def get_question_pipeline():
+    """Singleton do QuestionPipeline (pergunta → retrieval + geração)."""
+    global _question_pipeline
+    if _question_pipeline is None:
+        from app.pipelines import QuestionPipeline
+
+        _question_pipeline = QuestionPipeline(
+            retrieval_service=get_retrieval_service(),
+            qa_service=get_qa_service(),
+            llm_client=get_llm_client(),
+        )
+    return _question_pipeline

@@ -3,25 +3,11 @@ import uuid
 from fastapi import APIRouter, Query
 
 from app.api.schemas import QuestionRequest, QuestionResponse
-from app.core.dependencies import get_llm_client, get_qa_service, get_retrieval_service
+from app.core.dependencies import get_question_pipeline
 from app.core.logging import get_logger
-from app.pipelines import QuestionPipeline
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["questions"])
-
-_question_pipeline: QuestionPipeline | None = None
-
-
-def _get_question_pipeline() -> QuestionPipeline:
-    global _question_pipeline
-    if _question_pipeline is None:
-        _question_pipeline = QuestionPipeline(
-            retrieval_service=get_retrieval_service(),
-            qa_service=get_qa_service(),
-            llm_client=get_llm_client(),
-        )
-    return _question_pipeline
 
 
 def _truncate(s: str, max_len: int = 80) -> str:
@@ -47,7 +33,7 @@ def ask_question(
     )
     try:
         logger.info("request_id=%s | início processamento", request_id)
-        pipeline = _get_question_pipeline()
+        pipeline = get_question_pipeline()
         result = pipeline.run(
             question=question,
             top_k=top_k,

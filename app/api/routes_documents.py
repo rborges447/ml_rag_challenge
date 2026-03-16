@@ -5,22 +5,11 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.api.schemas import DocumentUploadResponse
 from app.core.config import settings
-from app.core.dependencies import get_document_processing_service
+from app.core.dependencies import get_ingestion_pipeline
 from app.core.logging import get_logger
-from app.pipelines import IngestionPipeline
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["documents"])
-
-_ingestion_pipeline: IngestionPipeline | None = None
-
-def _get_ingestion_pipeline() -> IngestionPipeline:
-    global _ingestion_pipeline
-    if _ingestion_pipeline is None:
-        _ingestion_pipeline = IngestionPipeline(
-            document_processing_service=get_document_processing_service(),
-        )
-    return _ingestion_pipeline
 
 
 @router.post("/documents", response_model=DocumentUploadResponse)
@@ -53,7 +42,7 @@ async def upload_documents(
             request_id,
             source_name,
         )
-        pipeline = _get_ingestion_pipeline()
+        pipeline = get_ingestion_pipeline()
         result = pipeline.run(
             file_path=file_path,
             source_name=source_name,
