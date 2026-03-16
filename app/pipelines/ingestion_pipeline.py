@@ -1,23 +1,23 @@
 """
-Pipeline de ingestão: loader → preprocessor → chunking → metadata enricher → embedding → vector store.
+Pipeline de ingestão: loader → preprocessor → chunking → metadata enricher → embedding (RetrievalService) → vector store.
 """
 import uuid
 
 from langchain_core.documents import Document
 
-from app.core.dependencies import get_embedding_service, get_vector_store
+from app.core.dependencies import get_retrieval_service, get_vector_store
 from app.core.log_decorators import log_ingestion_run
-from app.embeddings import EmbeddingService
 from app.ingestion import (
     ChunkingService,
     DocumentLoaderService,
     MetadataEnricher,
     TextPreprocessor,
 )
+from app.retrieval import RetrievalService
 
 
 class IngestionPipeline:
-    """Orquestra o fluxo de ingestão: documento → chunks enriquecidos → embeddings → vector store."""
+    """Orquestra o fluxo de ingestão: documento → chunks enriquecidos → embeddings (via RetrievalService) → vector store."""
 
     def __init__(
         self,
@@ -25,14 +25,14 @@ class IngestionPipeline:
         text_preprocessor: TextPreprocessor | None = None,
         chunking_service: ChunkingService | None = None,
         metadata_enricher: MetadataEnricher | None = None,
-        embedding_service: EmbeddingService | None = None,
+        retrieval_service: RetrievalService | None = None,
         vector_store=None,
     ) -> None:
         self._loader = document_loader or DocumentLoaderService()
         self._preprocessor = text_preprocessor or TextPreprocessor()
         self._chunking = chunking_service or ChunkingService()
         self._metadata_enricher = metadata_enricher or MetadataEnricher()
-        self._embedding_service = embedding_service or get_embedding_service()
+        self._retrieval_service = retrieval_service or get_retrieval_service()
         self._vector_store = vector_store or get_vector_store()
 
     @log_ingestion_run
@@ -70,7 +70,7 @@ class IngestionPipeline:
             return {"total_chunks": 0}
 
         texts = [c.page_content for c in chunks]
-        embeddings = self._embedding_service.embed_documents(texts)
+        embeddings = self._retrieval_service.embed_documents(texts)
         ids = [str(uuid.uuid4()) for _ in chunks]
         self._vector_store.add_vectors(ids=ids, embeddings=embeddings, documents=chunks)
 

@@ -5,23 +5,11 @@ def get_settings():
     return settings
 
 
-_embedding = None
-
-
-def get_embedding_function():
-    """Singleton do modelo de embeddings (para testes legados). Pipelines usam EmbeddingService."""
-    global _embedding
-    if _embedding is None:
-        from langchain_community.embeddings import HuggingFaceEmbeddings
-        _embedding = HuggingFaceEmbeddings(model_name=settings.embedding_model_name)
-    return _embedding
-
-
 _vector_store = None
 
 
 def get_vector_store():
-    """VectorStore sem embedding (apenas armazena e consulta vetores). Os pipelines usam EmbeddingService."""
+    """VectorStore sem embedding (apenas armazena e consulta vetores). Usado por RetrievalService e IngestionPipeline."""
     global _vector_store
     if _vector_store is None:
         from app.storage.vector_store import VectorStore
@@ -29,13 +17,13 @@ def get_vector_store():
     return _vector_store
 
 
-_embedding_service = None
+_retrieval_service = None
 
 
-def get_embedding_service():
-    """Singleton do EmbeddingService. Usado pelos pipelines de ingestão e pergunta quando não recebem injeção."""
-    global _embedding_service
-    if _embedding_service is None:
-        from app.embeddings import EmbeddingService
-        _embedding_service = EmbeddingService()
-    return _embedding_service
+def get_retrieval_service():
+    """Singleton do serviço de retrieval. Usado pelo QuestionPipeline e pelo IngestionPipeline (embed_documents)."""
+    global _retrieval_service
+    if _retrieval_service is None:
+        from app.retrieval import RetrievalService
+        _retrieval_service = RetrievalService(vector_store=get_vector_store())
+    return _retrieval_service

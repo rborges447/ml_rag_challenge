@@ -114,10 +114,10 @@ def log_vector_store_add(fn):
 
 
 def log_vector_store_search(fn):
-    """Decorator para VectorStore.similarity_search_with_score_by_vector: log k e resultados."""
+    """Decorator para VectorStore.query_nearest: log k e resultados."""
     @functools.wraps(fn)
     def wrapper(self, query_embedding, k: int = 8):
         result = fn(self, query_embedding, k)
-        logger.info("similarity_search_with_score_by_vector k=%s resultados=%s", k, len(result))
+        logger.info("query_nearest k=%s resultados=%s", k, len(result))
         return result
     return wrapper

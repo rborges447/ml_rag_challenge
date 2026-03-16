@@ -11,7 +11,7 @@
 - **Vector store:** passou a ter apenas armazenamento e consulta de vetores: sem `embedding_function` no construtor; novos métodos `add_vectors(ids, embeddings, documents)` e `similarity_search_with_score_by_vector(query_embedding, k)`. Implementação usando chromadb (PersistentClient) diretamente.
 - **RetrievalService:** passou a usar EmbeddingService para embed da pergunta e VectorStore.similarity_search_with_score_by_vector para busca (em vez de similarity_search_with_score com texto).
 - **IngestionService e QAService:** mantidos como fachadas que delegam ao use case/pipeline, para compatibilidade com código e testes que ainda os utilizam.
-- **dependencies.py:** `get_vector_store()` instancia VectorStore sem embedding; `get_embedding_function()` mantido como singleton para testes legados.
+- **dependencies.py:** `get_vector_store()` instancia VectorStore sem embedding; `get_retrieval_service()` para retrieval (embedding é lógica interna do RetrievalService).
 
 ---
 
@@ -37,7 +37,7 @@
 |---------|-----------|
 | `app/api/routes_documents.py` | Passa a usar `DocumentIngestionUseCase` em vez de `IngestionService`. |
 | `app/api/routes_questions.py` | Passa a usar `AnswerQuestionUseCase` em vez de `get_qa_service()`. |
-| `app/core/dependencies.py` | `get_vector_store()` instancia VectorStore sem embedding; `get_embedding_function()` mantido para testes. |
+| `app/core/dependencies.py` | `get_vector_store()` instancia VectorStore sem embedding; `get_retrieval_service()` para retrieval. |
 | `app/services/vector_store.py` | Refatorado: só armazena/consulta vetores; `add_vectors` e `similarity_search_with_score_by_vector`; uso de chromadb.PersistentClient. |
 | `app/services/ingestion/ingestion_service.py` | Virou fachada: delega a `DocumentIngestionUseCase` (salvar + pipeline). |
 | `app/services/retrieval/retrieval_service.py` | Usa `EmbeddingService.embed_query` e `VectorStore.similarity_search_with_score_by_vector`. |

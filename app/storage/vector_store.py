@@ -1,6 +1,6 @@
 """
 Vector store que encapsula Chroma: apenas armazenamento e consulta de vetores.
-Não calcula embeddings; recebe vetores já calculados pelo EmbeddingService.
+Não calcula embeddings; recebe vetores já calculados (ex.: pelo RetrievalService).
 """
 import chromadb
 from langchain_core.documents import Document
@@ -33,7 +33,7 @@ class VectorStore:
         documents: list[Document],
     ) -> list[str]:
         """
-        Indexa vetores no Chroma. Os vetores devem ter sido calculados pelo EmbeddingService.
+        Indexa vetores no Chroma. Os vetores devem ter sido calculados (ex.: pelo RetrievalService).
         Retorna a lista de ids.
         """
         if not documents or not embeddings or not ids:
@@ -56,21 +56,21 @@ class VectorStore:
         return ids
 
     @log_vector_store_search
-    def similarity_search_with_score_by_vector(
+    def query_nearest(
         self,
         query_embedding: list[float],
         k: int = 8,
-    ) -> list[tuple[Document, float]]:
+    ) -> list[tuple[str, dict, float]]:
         """
-        Busca por similaridade usando o vetor da pergunta (já calculado pelo EmbeddingService).
-        Retorna (Document, distance) com distância L2 (menor = mais similar).
+        Consulta k vetores mais próximos ao query_embedding (distância L2).
+        Retorna dados brutos: list[(page_content, metadata, distance)].
         """
         result = self._collection.query(
             query_embeddings=[query_embedding],
             n_results=k,
             include=["documents", "metadatas", "distances"],
         )
-        out: list[tuple[Document, float]] = []
+        out: list[tuple[str, dict, float]] = []
         if not result or not result["ids"] or not result["ids"][0]:
             return out
         docs = result["documents"][0]
@@ -79,8 +79,5 @@ class VectorStore:
         for i, doc_text in enumerate(docs):
             meta = metadatas[i] if i < len(metadatas) else {}
             dist = float(distances[i]) if i < len(distances) else 0.0
-            out.append((
-                Document(page_content=doc_text or "", metadata=meta),
-                dist,
-            ))
+            out.append((doc_text or "", meta, dist))
         return out

@@ -18,7 +18,7 @@ ml_rag_challenge/
 │   ├── core/
 │   │   ├── __init__.py          # Exporta config, dependencies
 │   │   ├── config.py            # Settings (Pydantic): chunk, retrieval, LLM, Chroma, upload_dir
-│   │   └── dependencies.py     # get_settings, get_embedding_function, get_vector_store (singletons)
+│   │   └── dependencies.py     # get_settings, get_vector_store, get_retrieval_service (singletons)
 │   ├── pipelines/
 │   │   ├── __init__.py          # Exporta IngestionPipeline, QuestionPipeline
 │   │   ├── ingestion_pipeline.py   # loader → preprocessor → chunking → metadata → embed → add_vectors
@@ -82,7 +82,7 @@ ml_rag_challenge/
 │   ├── test_api_documents.py   # POST /documents (mock IngestionPipeline)
 │   ├── test_api_question.py    # POST /question
 │   ├── test_config.py          # Settings, env
-│   ├── test_dependencies.py    # get_embedding_function, get_vector_store singletons
+│   ├── test_dependencies.py    # get_vector_store, get_retrieval_service singletons
 │   ├── test_prompt_builder.py  # build_prompt
 │   ├── test_retrieval_service.py # DummyRetrievalService, top_k
 │   ├── test_vector_store.py    # add_vectors, similarity_search_with_score_by_vector
@@ -120,7 +120,7 @@ ml_rag_challenge/
 | **app/embeddings/** | Única camada que calcula embeddings (documentos e pergunta). |
 | **app/storage/** | VectorStore: persiste e consulta vetores no Chroma (add_vectors, similarity_search_with_score_by_vector). |
 | **app/clients/** | LLMClient com fallback de providers (Gemini, OpenAI). |
-| **app/core/** | Configuração (Settings) e dependências (get_vector_store, get_embedding_function). |
+| **app/core/** | Configuração (Settings) e dependências (get_vector_store, get_retrieval_service). |
 | **ui/** | Frontend Streamlit: upload de PDF e chat; consome a API via api_client. |
 | **tests/** | Testes da API, pipelines, vector store, LLM, config. |
 | **scripts/** | Benchmark de retrieval (QuestionPipeline). |
