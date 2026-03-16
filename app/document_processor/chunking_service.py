@@ -21,3 +21,4 @@ class ChunkingService:
     def split(self, documents: list[Document]) -> list[Document]:
         """Retorna lista de chunks (Documents) a partir dos documentos por página."""
         return self._splitter.split_documents(documents)
+

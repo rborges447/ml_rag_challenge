@@ -44,3 +44,4 @@ class MetadataEnricher:
             meta["is_intro_page"] = _is_intro_page(page, text)
             meta["section_hint"] = _section_hint(text)
             chunk.metadata = meta
+

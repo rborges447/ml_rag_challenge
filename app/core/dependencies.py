@@ -29,19 +29,16 @@ def get_retrieval_service():
     return _retrieval_service
 
 
-_ingestion_service = None
+_document_processing_service = None
 
 
-def get_ingestion_service():
-    """Singleton do serviço de ingestão. Usado pelo IngestionPipeline."""
-    global _ingestion_service
-    if _ingestion_service is None:
-        from app.ingestion import IngestionService
-        _ingestion_service = IngestionService(
-            retrieval_service=get_retrieval_service(),
-            vector_store=get_vector_store(),
-        )
-    return _ingestion_service
+def get_document_processing_service():
+    """Singleton do serviço de processamento de documentos. Usado pelo IngestionPipeline."""
+    global _document_processing_service
+    if _document_processing_service is None:
+        from app.document_processor import DocumentProcessingService
+        _document_processing_service = DocumentProcessingService()
+    return _document_processing_service
 
 
 _qa_service = None

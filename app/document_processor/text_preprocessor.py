@@ -117,3 +117,4 @@ class TextPreprocessor:
         header_footer_threshold: float = 0.5,
     ) -> list[dict[str, Any]]:
         return preprocess_pages(pages, header_footer_threshold=header_footer_threshold)
+

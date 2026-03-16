@@ -23,3 +23,4 @@ class DocumentLoaderService:
                 "text": doc.page_content or "",
             })
         return pages_list
+
