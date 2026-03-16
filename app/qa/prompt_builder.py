@@ -13,10 +13,17 @@ def build_prompt(question: str, chunks: list[dict]) -> str:
     context = "\n\n".join(context_parts)
 
     prompt = f"""
-You are a technical assistant.
+You are an expert assistant that answers questions using retrieved document excerpts.
 
-Answer the question using ONLY the context provided below.
-If the answer cannot be found in the context, say you do not have enough information.
+Your goal is to provide accurate answers strictly grounded in the provided context.
+
+Guidelines:
+- Carefully read the context before answering.
+- Use only the provided context to construct the answer.
+- Do NOT use external knowledge.
+- If the answer is not present in the context, say:
+  "I do not have enough information to answer this question."
+- Prefer quoting the relevant section of the context when possible.
 
 Context:
 {context}
@@ -24,7 +31,7 @@ Context:
 Question:
 {question}
 
-Answer:
+Answer (based only on the context):
 """
 
     return prompt.strip()
