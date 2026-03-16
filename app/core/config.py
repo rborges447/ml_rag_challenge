@@ -12,7 +12,6 @@ class Settings(BaseSettings):
     # ========================
     # Vector Store / Embeddings
     # ========================
-    openai_api_key: str | None = None
     chroma_path: str = "data/chroma"
     chroma_collection_name: str = "documents"
     embedding_model_name: str = "all-MiniLM-L6-v2"
@@ -53,16 +52,6 @@ class Settings(BaseSettings):
 
     # OpenAI
     openai_api_key: str | None = None
-
-    # Mantidos para uso futuro, se quiser
-    openrouter_api_key: str | None = None
-    openrouter_model: str = "openrouter/auto"
-
-    groq_api_key: str | None = None
-    groq_model: str = "llama-3.1-8b-instant"
-
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "llama3"
 
     model_config = SettingsConfigDict(
         env_file=".env",
