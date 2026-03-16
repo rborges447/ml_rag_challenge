@@ -27,11 +27,11 @@ class IngestionPipeline:
 
     def __init__(
         self,
-        ingestion_service: DocumentProcessingService | None = None,
+        document_processing_service: DocumentProcessingService | None = None,
         retrieval_service: RetrievalService | None = None,
         vector_store: VectorStore | None = None,
     ) -> None:
-        self._ingestion_service = ingestion_service or get_document_processing_service()
+        self._document_processing_service = document_processing_service or get_document_processing_service()
         self._retrieval_service = retrieval_service or get_retrieval_service()
         self._vector_store = vector_store or get_vector_store()
 
@@ -56,7 +56,7 @@ class IngestionPipeline:
             },
         }
         """
-        service_result = self._ingestion_service.run(
+        service_result = self._document_processing_service.run(
             file_path=file_path,
             source_name=source_name,
             request_id=request_id,

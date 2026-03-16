@@ -14,12 +14,11 @@ router = APIRouter(tags=["documents"])
 
 _ingestion_pipeline: IngestionPipeline | None = None
 
-
 def _get_ingestion_pipeline() -> IngestionPipeline:
     global _ingestion_pipeline
     if _ingestion_pipeline is None:
         _ingestion_pipeline = IngestionPipeline(
-            ingestion_service=get_document_processing_service(),
+            document_processing_service=get_document_processing_service(),
         )
     return _ingestion_pipeline
 
