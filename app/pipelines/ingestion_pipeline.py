@@ -1,39 +1,16 @@
 """
-Pipeline de ingestão: loader → preprocessor → chunking → metadata enricher → embedding (RetrievalService) → vector store.
+Pipeline de ingestão: orquestra o IngestionService (loader → preprocessor → chunking → metadata enricher → embedding → vector store).
 """
-import uuid
-
-from langchain_core.documents import Document
-
-from app.core.dependencies import get_retrieval_service, get_vector_store
+from app.core.dependencies import get_ingestion_service
 from app.core.log_decorators import log_ingestion_run
-from app.ingestion import (
-    ChunkingService,
-    DocumentLoaderService,
-    MetadataEnricher,
-    TextPreprocessor,
-)
-from app.retrieval import RetrievalService
+from app.ingestion import IngestionService
 
 
 class IngestionPipeline:
-    """Orquestra o fluxo de ingestão: documento → chunks enriquecidos → embeddings (via RetrievalService) → vector store."""
+    """Orquestra o fluxo de ingestão delegando ao IngestionService."""
 
-    def __init__(
-        self,
-        document_loader: DocumentLoaderService | None = None,
-        text_preprocessor: TextPreprocessor | None = None,
-        chunking_service: ChunkingService | None = None,
-        metadata_enricher: MetadataEnricher | None = None,
-        retrieval_service: RetrievalService | None = None,
-        vector_store=None,
-    ) -> None:
-        self._loader = document_loader or DocumentLoaderService()
-        self._preprocessor = text_preprocessor or TextPreprocessor()
-        self._chunking = chunking_service or ChunkingService()
-        self._metadata_enricher = metadata_enricher or MetadataEnricher()
-        self._retrieval_service = retrieval_service or get_retrieval_service()
-        self._vector_store = vector_store or get_vector_store()
+    def __init__(self, ingestion_service: IngestionService | None = None) -> None:
+        self._ingestion_service = ingestion_service or get_ingestion_service()
 
     @log_ingestion_run
     def run(
@@ -43,43 +20,11 @@ class IngestionPipeline:
         request_id: str | None = None,
     ) -> dict:
         """
-        Executa o pipeline: carrega PDF, preprocessa, chunking, enriquece metadados,
-        calcula embeddings e armazena no vector store.
-        Retorna {"total_chunks": int}.
+        Executa o pipeline de ingestão via IngestionService.
+        Retorna {"total_chunks": int, "_log": ...}.
         """
-        pages_list = self._loader.load(file_path, source_name)
-        pages_list = self._preprocessor.preprocess_pages(pages_list)
-
-        documents_for_split = []
-        for p in pages_list:
-            page_num = p["page"]
-            text = p["text"]
-            if not text.strip():
-                continue
-            documents_for_split.append(
-                Document(
-                    page_content=text,
-                    metadata={"source": source_name, "page": page_num},
-                )
-            )
-
-        chunks = self._chunking.split(documents_for_split)
-        self._metadata_enricher.enrich(chunks)
-
-        if not chunks:
-            return {"total_chunks": 0}
-
-        texts = [c.page_content for c in chunks]
-        embeddings = self._retrieval_service.embed_documents(texts)
-        ids = [str(uuid.uuid4()) for _ in chunks]
-        self._vector_store.add_vectors(ids=ids, embeddings=embeddings, documents=chunks)
-
-        return {
-            "total_chunks": len(chunks),
-            "_log": {
-                "pages": len(pages_list),
-                "chunks": len(chunks),
-                "embeddings": len(embeddings),
-                "persisted": len(ids),
-            },
-        }
+        return self._ingestion_service.run(
+            file_path=file_path,
+            source_name=source_name,
+            request_id=request_id,
+        )

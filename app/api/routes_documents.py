@@ -5,7 +5,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.api.schemas import DocumentUploadResponse
 from app.core.config import settings
-from app.core.dependencies import get_retrieval_service, get_vector_store
+from app.core.dependencies import get_ingestion_service
 from app.core.logging import get_logger
 from app.pipelines import IngestionPipeline
 
@@ -18,10 +18,7 @@ _ingestion_pipeline: IngestionPipeline | None = None
 def _get_ingestion_pipeline() -> IngestionPipeline:
     global _ingestion_pipeline
     if _ingestion_pipeline is None:
-        _ingestion_pipeline = IngestionPipeline(
-            vector_store=get_vector_store(),
-            retrieval_service=get_retrieval_service(),
-        )
+        _ingestion_pipeline = IngestionPipeline(ingestion_service=get_ingestion_service())
     return _ingestion_pipeline
 
 

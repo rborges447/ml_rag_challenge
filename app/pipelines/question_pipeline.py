@@ -1,11 +1,11 @@
 """
-Pipeline de pergunta: RetrievalService (embed, search, filter, dedup, rerank) → prompt builder → LLM → references.
+Pipeline de pergunta: RetrievalService (embed, search, filter, dedup, rerank) → QAService (prompt) → LLMClient → references.
 """
 from app.clients import LLMClient
 from app.core.config import settings
-from app.core.dependencies import get_retrieval_service
+from app.core.dependencies import get_llm_client, get_qa_service, get_retrieval_service
 from app.core.log_decorators import log_question_run
-from app.qa.prompt_builder import build_prompt
+from app.qa import QAService
 from app.retrieval import RetrievalService
 
 
@@ -15,10 +15,12 @@ class QuestionPipeline:
     def __init__(
         self,
         retrieval_service: RetrievalService | None = None,
+        qa_service: QAService | None = None,
         llm_client: LLMClient | None = None,
     ) -> None:
         self._retrieval_service = retrieval_service or get_retrieval_service()
-        self._llm_client = llm_client or LLMClient()
+        self._qa_service = qa_service or get_qa_service()
+        self._llm_client = llm_client or get_llm_client()
 
     @log_question_run
     def run(
@@ -46,7 +48,7 @@ class QuestionPipeline:
             min_score=min_score,
         )
 
-        prompt = build_prompt(question, retrieved_chunks)
+        prompt = self._qa_service.build_prompt(question, retrieved_chunks)
         answer = self._llm_client.generate(prompt)
 
         references_set: set[str] = set()
