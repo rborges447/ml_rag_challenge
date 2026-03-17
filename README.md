@@ -48,10 +48,14 @@ OPENAI_API_KEY=sua_chave_aqui
 
 ### Passo 3 — Suba os serviços
 ```bash
+# Primeira vez (ou após mudar requirements.txt / imagem base)
 docker compose up --build
+
+# Uso diário (mais rápido, reaproveita a imagem já construída)
+docker compose up -d
 ```
 
-Aguarde o build terminar. Na primeira vez pode levar alguns minutos.
+Aguarde o build terminar. Na primeira vez pode levar alguns minutos (especialmente ao instalar dependências).
 
 ### Serviços disponíveis
 
@@ -117,6 +121,14 @@ Os PDFs de exemplo estão na pasta `example_data/`. Faça upload e teste:
 
 > **Nota:** O texto exato da resposta pode variar conforme o provedor de IA, mas as informações-chave devem coincidir.
 
+**Rodar exemplos de perguntas via Docker (scripts/exemples_questions.py)**
+```bash
+# Compor e rodar diretamente um container novo
+docker compose run --rm api python scripts/exemples_questions.py
+
+# Ou, se a stack já estiver subida com `docker compose up`
+docker compose exec api python scripts/exemples_questions.py
+
 ---
 
 ## 🏗️ Como o sistema funciona
@@ -149,10 +161,9 @@ Chunks muito similares são removidos antes de serem enviados ao LLM, evitando c
 **Fallback entre provedores de LLM**
 Se o provedor primário falhar, o sistema tenta automaticamente o segundo provedor — sem interrupção para o usuário.
 
-**Benchmark de Retrieval**
-```bash
-python scripts/benchmark_retrieval.py
-# Métricas: top-1, top-3 e top-5 accuracy
+```
+
+
 ```
 
 ---
@@ -175,7 +186,7 @@ ui/
 └── services/           # Comunicação com a API
 
 scripts/
-└── benchmark_retrieval.py
+└── exemple_questions.py
 ```
 
 ---
@@ -216,9 +227,10 @@ OPENAI_API_KEY=sua_chave
 
 **Serviços não sobem com Docker**
 ```bash
-docker ps                  # verifica se o Docker está rodando
-docker compose logs        # inspeciona os logs de erro
+docker ps                          # verifica se o Docker está rodando
+docker compose logs api ui         # inspeciona os logs de cada serviço
 ```
+> 💡 Use `docker compose up --build` apenas quando alterar dependências (por exemplo, `requirements.txt`) ou a imagem base. No dia a dia, prefira `docker compose up -d`, que é muito mais rápido por reaproveitar as imagens já construídas.
 > Confirme também que as portas `8000` e `8501` não estão em uso.
 
 ---
