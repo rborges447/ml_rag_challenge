@@ -229,7 +229,7 @@ LOG_LEVEL=INFO
 LLM_TIMEOUT_SECONDS=60
 LLM_ROUTE=gemini:gemini-3-flash-preview,gemini:gemini-2.5-flash,openai:gpt-4.1-mini
 
-# Chaves de API (obrigatórias para usar LLM)
+# Chaves de API (forneça pelo menos uma - o sistema de fallback cuidara do resto)
 GEMINI_API_KEY=SEU_TOKEN_GEMINI_AQUI
 OPENAI_API_KEY=SEU_TOKEN_OPENAI_AQUI
 
@@ -388,6 +388,34 @@ Acesse:
    - Verifique a sidebar da UI: ela mostra o status da API (`/health`).
    - Confira se o `.env` está com chaves válidas (`GEMINI_API_KEY`, `OPENAI_API_KEY`).
    - Veja os logs do backend (terminal local ou `docker compose logs api`).
+
+**PDFs de exemplo:** Os PDFs para fazer upload no sistema estão na pasta **`exemple_data/`** na raiz do projeto, para facilitar sua obtenção.
+
+---
+
+## Perguntas e respostas de exemplo
+
+Use os documentos da pasta `exemple_data/` para testar o sistema. Para cada exemplo abaixo, faça **upload do PDF indicado** na aba "Upload de documentos" e, em seguida, faça a pergunta na aba "Chat RAG".
+
+**1. LB5001.pdf**
+
+- **Pergunta:** How often should motor bearings be lubricated for motors up to frame size 210 at 1800 RPM?
+- **Resposta esperada:** Motor bearings for motors up to frame size 210 at 1800 RPM should be relubricated every 12,000 hours.
+
+**2. MN414_0224.pdf**
+
+- **Pergunta:** What lubricant is recommended for new Baldor submersible motors?
+- **Resposta esperada:** The recommended lubricant is Shell Rotella 10 SAE 10W. The manual also states that new Baldor submersible motors ship with the oil reservoir properly filled with lubricant.
+
+**3. WEG-CESTARI-manual-iom-guia-consulta-rapida-50111652-pt-en-es-web.pdf**
+
+- **Pergunta:** Within what maximum period must WEG-CESTARI gear units or gearmotors be put into operation after leaving the factory?
+- **Resposta esperada:** WEG-CESTARI gear units and gearmotors must be put into operation within a maximum period of 6 months after leaving the factory.
+
+**4. WEG-motores-eletricos-guia-de-especificacao-50032749-brochure-portuguese-web.pdf**
+
+- **Pergunta:** Por que o motor de indução é o tipo de motor elétrico mais utilizado?
+- **Resposta esperada:** O motor de indução é o mais utilizado porque possui construção simples, alta confiabilidade, baixo custo, baixa necessidade de manutenção e boa eficiência, o que o torna adequado para uma ampla variedade de aplicações industriais.
 
 ---
 
