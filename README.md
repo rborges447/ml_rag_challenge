@@ -1,482 +1,226 @@
-# ML Engineering Challenge – RAG API & UI
+# 📄 RAG API & UI
+> Sistema de Perguntas e Respostas sobre Documentos PDF
 
-## Descrição geral
-
-Este projeto implementa um sistema completo de **RAG (Retrieval-Augmented Generation)** para perguntas e respostas sobre documentos PDF.  
-A aplicação permite que usuários façam upload de documentos, que são processados, indexados em um vetor store (ChromaDB) e posteriormente utilizados para responder perguntas em linguagem natural com apoio de LLMs (Gemini e/ou OpenAI).
-
-O sistema é composto por uma **API FastAPI** e uma **UI em Streamlit**, orquestrando um pipeline de ingestão de PDFs, geração de embeddings com modelos HuggingFace, recuperação de trechos relevantes (retrieval + rerank heurístico) e geração de respostas via LLMs com fallback entre providers. O foco é ser um backend/ML-engineering sólido, observável (logging estruturado) e pronto para experimentos de retrieval.
+**FastAPI** • **ChromaDB** • **HuggingFace** • **Gemini / OpenAI** • **Streamlit**
 
 ---
 
-## Principais funcionalidades
+## 🤔 O que é este projeto?
 
-- **Upload e ingestão de PDFs**
-  - Upload de arquivos PDF pela API (`POST /documents`) ou via UI Streamlit.
-  - Processamento de texto: limpeza, normalização, remoção de ruído, cabeçalhos/rodapés repetitivos.
-  - Chunking dos documentos com `RecursiveCharacterTextSplitter`.
-  - Enriquecimento de metadados (página, tamanho, flags de introdução, hints de seção).
-  - Geração de embeddings usando modelos HuggingFace.
-  - Armazenamento vetorial persistente no **ChromaDB**.
+Este projeto é um sistema completo de **RAG (Retrieval-Augmented Generation)** — uma técnica de IA que permite fazer perguntas sobre documentos PDF e receber respostas precisas baseadas no conteúdo real dos arquivos.
 
-- **Perguntas e respostas (RAG)**
-  - Endpoint para perguntas (`POST /question`).
-  - Retrieval vetorial com ChromaDB + reranking heurístico sensível ao tipo de pergunta (ex.: “o que é …”).
-  - **Expansão de query** (EN→PT): termos técnicos em inglês são expandidos com equivalentes em português antes do embed, melhorando retrieval cross-lingual (pergunta em EN × documento em PT).
-  - **Rerank para perguntas conceituais**: perguntas do tipo "why", "por que", "vantagens" não sofrem penalidade em chunks de página introdutória, onde costuma estar a explicação.
-  - Deduplicação de chunks similares.
-  - Montagem de prompt contextualizado (com referências de origem/página).
-  - Geração de resposta com LLM (Gemini / OpenAI) com estratégia de **fallback** entre múltiplos modelos.
+Em vez de uma IA que "chuta" respostas, este sistema **lê seus documentos, indexa o conteúdo e só então responde** — com referências ao trecho exato de onde a resposta veio.
 
-- **UI Web (Streamlit)**
-  - Tela de **upload** de múltiplos PDFs com feedback por arquivo.
-  - Tela de **chat RAG** para realizar perguntas sobre os documentos indexados.
-  - Visualização de **referências** e dos **chunks recuperados** (incluindo scores e trechos de texto).
-
-- **Benchmark de retrieval**
-  - Script `scripts/benchmark_retrieval.py` para avaliar a qualidade de retrieval em perguntas fixas, com métricas top-1/top-3/top-5.
-
-- **Observabilidade**
-  - Logging centralizado e consistente de pipelines (ingestão/pergunta) e operações de vector store.
-  - `request_id` gerado por requisição para rastreabilidade ponta a ponta.
+| | |
+|---|---|
+| 🧠 **O que faz?** | Responde perguntas sobre documentos PDF com IA |
+| ⚙️ **Back-end** | FastAPI + ChromaDB + HuggingFace Embeddings |
+| 🖥️ **Interface** | Streamlit — simples e visual |
+| 🤖 **IA** | Google Gemini ou OpenAI (com fallback automático) |
+| 🐳 **Deploy** | Docker Compose — sobe tudo com um comando |
 
 ---
 
-## Stack do projeto
+## 🚀 Início Rápido (3 minutos)
 
-- **Backend**
-  - [FastAPI](https://fastapi.tiangolo.com/) (API HTTP)
-  - [Pydantic / pydantic-settings](https://docs.pydantic.dev/latest/) (configuração)
-  - [Uvicorn](https://www.uvicorn.org/) (servidor ASGI)
-  - [ChromaDB](https://www.trychroma.com/) (vector store persistente)
-  - [LangChain](https://python.langchain.com/)
-    - `langchain-core`, `langchain-community`, `langchain-chroma`, `langchain-text-splitters`
-  - [sentence-transformers](https://www.sbert.net/) (embeddings HuggingFace)
-  - [PyMuPDF](https://pymupdf.readthedocs.io/) via `langchain_community.document_loaders.PyMuPDFLoader` (leitura de PDFs)
+### Pré-requisitos
+- Docker instalado na máquina
+- Chave de API do **Google Gemini** ou **OpenAI** (pelo menos uma)
 
-- **LLM Providers**
-  - [Google Gemini](https://ai.google.dev/) via `google-genai`
-  - [OpenAI](https://platform.openai.com/) via `openai` (nova API `responses`)
-
-- **Frontend**
-  - [Streamlit](https://streamlit.io/) (UI para upload e chat)
-
-- **Infra / Dev**
-  - Docker (imagens separadas para API e UI)
-  - Docker Compose (orquestração API + UI + volume de dados)
-  - `httpx` (cliente HTTP da UI para a API)
-
----
-
-## Arquitetura do sistema
-
-A arquitetura é organizada em camadas de domínio e infraestrutura dentro do diretório `app/`, com uma UI desacoplada em `ui/`.
-
-### Componentes principais
-
-- **API (FastAPI)**
-  - `app/main.py`: inicialização da aplicação FastAPI, configuração de logging e rota `/health`.
-  - `app/api/routes_documents.py`: rota de upload/ingestão de documentos.
-  - `app/api/routes_questions.py`: rota de perguntas.
-  - `app/api/schemas/`: schemas Pydantic usados pela API.
-
-- **Pipelines**
-  - `IngestionPipeline` (`app/pipelines/ingestion_pipeline.py`):  
-    Orquestra `DocumentProcessingService` → `RetrievalService.embed_documents` → `VectorStore.add_vectors`.
-  - `QuestionPipeline` (`app/pipelines/question_pipeline.py`):  
-    Orquestra `RetrievalService.retrieve` → `QAService.build_prompt` → `LLMClient.generate` → montagem de referências.
-
-- **Processamento de documentos (`app/document_processor/`)**
-  - `DocumentLoaderService`: usa `PyMuPDFLoader` para carregar PDF e converter em lista de páginas (`{"page", "text"}`).
-  - `TextPreprocessor`: normalização de texto, remoção de ruído/linhas inúteis, remoção de cabeçalhos/rodapés repetitivos e blocos genéricos.
-  - `ChunkingService`: aplica `RecursiveCharacterTextSplitter` com `chunk_size` e `chunk_overlap` configuráveis.
-  - `MetadataEnricher`: adiciona metadados como `chunk_id`, `chunk_index`, `char_count`, `is_intro_page`, `section_hint`.
-
-- **Retrieval (`app/retrieval/`)**
-  - `RetrievalService`: encapsula embedding de query/documentos e consulta ao `VectorStore`:
-    - **Expansão de query** (`query_expansion.py`): antes do embed, a pergunta é expandida com termos em PT (mapeamento EN→PT editável), melhorando match com documentos em português.
-    - Gera embedding da pergunta (expandida) e consulta ao ChromaDB (`VectorStore.query_nearest`).
-    - Filtra candidatos por distância e texto vazio.
-    - Deduplicação (_text similarity_) via `_deduplicate_by_similarity`.
-    - Rerank heurístico via `rerank` (`RankingService`).
-  - `_EmbeddingModel` (`embedding.py`): wrapper de `HuggingFaceEmbeddings` configurado por `settings.embedding_model_name`. Modelos E5 (`intfloat/multilingual-e5-base`) usam prefixos `"query: "` / `"passage: "` automaticamente. **Ao trocar o modelo de embedding é necessária re-indexação** (re-upload dos PDFs).
-  - `ranking_service.py`: heurísticas de rerank (bônus por termos, padrões de definição, penalidade para títulos/intro/duplicatas). Para perguntas conceituais ("why", "por que", "vantagens"), não aplica penalidade em chunks de página introdutória.
-
-- **Vector Store (`app/storage/vector_store.py`)**
-  - Encapsula `chromadb.PersistentClient` com `collection` configurada por `CHROMA_PATH` e `CHROMA_COLLECTION_NAME`.
-  - Interface:
-    - `add_vectors(ids, embeddings, documents)` – adiciona vetores + textos + metadados.
-    - `query_nearest(query_embedding, k)` – retorna lista de `(page_content, metadata, distance)`.
-
-- **QA / Prompting (`app/qa/`)**
-  - `QAService`: serviço de domínio que monta o prompt para o LLM.
-  - `prompt_builder.build_prompt`: monta o contexto com tags `[Source: ... | Page: ...]` e injeta instruções em inglês para responder **apenas** com base no contexto.
-
-- **LLM Client (`app/clients/`)**
-  - `LLMClient`: gerencia rota de LLMs (`LLM_ROUTE`) e implementa **fallback**:
-    - Constrói uma lista de providers (`GeminiProvider`, `OpenAIProvider`) em ordem de prioridade.
-    - Para cada provider:
-      - Verifica `is_available()` (checa se há API key e client configurado).
-      - Chama `generate(prompt)` com timeout configurado.
-      - Em caso de erro, faz fallback para o próximo provider.
-  - `GeminiProvider`: usa `google.genai.Client` e `generate_content`.
-  - `OpenAIProvider`: usa `OpenAI(...).responses.create` com `model` e `input`.
-
-- **Configuração e dependências (`app/core/`)**
-  - `config.Settings`: centraliza variáveis de ambiente e defaults.
-  - `dependencies.py`: provê singletons para `VectorStore`, `RetrievalService`, `DocumentProcessingService`, `QAService`, `LLMClient` e pipelines.
-  - `logging.py` e `log_decorators.py`: configuração e decorators de logging.
-
-- **UI Streamlit (`ui/`)**
-  - `ui/streamlit_app.py`: app principal com duas abas:
-    - “Upload de documentos”
-    - “Chat de perguntas e respostas”
-  - `ui/services/api_client.py`: cliente HTTP para a API (`/health`, `/documents`, `/question`).
-  - `ui/pages/1_upload.py`: página de upload e indexação de PDFs.
-  - `ui/pages/2_chat.py`: página de chat RAG.
-  - `ui/components/*`: componentes de UI (sidebar, chat box, referências, chunks).
-  - `ui/state/session_state.py`: gerenciamento de estado da sessão (chat, referências, status da API).
-  - `ui/config/settings.py`: configurações da UI (API_BASE_URL, timeout).
-
-### Diagrama (Mermaid)
-
-```mermaid
-flowchart LR
-    subgraph User
-        U1[Upload PDF (UI)]
-        U2[Pergunta (UI)]
-    end
-
-    subgraph UI[Streamlit UI]
-        UI_API[ui/services/api_client.py]
-    end
-
-    subgraph API[FastAPI]
-        DRoute[/POST /documents/]
-        QRoute[/POST /question/]
-        Health[/GET /health/]
-    end
-
-    subgraph Ingestion[IngestionPipeline]
-        DPS[DocumentProcessingService\n(loader → preproc → chunking → metadata)]
-        RSemb[RetrievalService.embed_documents]
-        VSadd[VectorStore.add_vectors]
-    end
-
-    subgraph Retrieval[QuestionPipeline]
-        RS[RetrievalService.retrieve]
-        QA[QAService.build_prompt]
-        LLM[LLMClient.generate\n(Gemini/OpenAI + fallback)]
-    end
-
-    subgraph Storage[ChromaDB]
-        CH[PersistentClient + Collection]
-    end
-
-    U1 --> UI
-    U2 --> UI
-
-    UI_API -->|upload_document| DRoute
-    UI_API -->|ask_question| QRoute
-    UI_API -->|health_check| Health
-
-    DRoute --> Ingestion
-    Ingestion --> CH
-
-    QRoute --> Retrieval
-    Retrieval --> CH
-    Retrieval --> QA --> LLM
-
-    LLM --> QRoute --> UI_API --> U2
-```
-
----
-
-## Guia rápido (Quickstart)
-
-> **Se você nunca rodou o projeto antes, siga exatamente esta ordem.**
-
-### 1. Clonar o repositório
-
+### Passo 1 — Clone o repositório
 ```bash
-git clone <URL_DO_REPO>
+git clone <REPO_URL>
 cd ml_rag_challenge
 ```
 
-### 2. Criar o arquivo `.env` a partir do `.env.example`
-
-O projeto **não funciona** sem algumas variáveis de ambiente mínimas, em especial as chaves das APIs de LLM.
-
+### Passo 2 — Configure as variáveis de ambiente
 ```bash
 cp .env.example .env
 ```
 
-Edite o arquivo `.env` e ajuste pelo menos:
-
+Abra o arquivo `.env` e adicione pelo menos uma chave de API:
 ```env
-# Caminhos para dados (backend)
-CHROMA_PATH=data/chroma
-UPLOAD_DIR=data/raw
-
-# Modelo de embedding (HuggingFace). Ao trocar, re-indexe (re-upload dos PDFs).
-# all-MiniLM-L6-v2 = mais rápido, menor; multilingual-e5-base = multilíngue EN↔PT, mais lento.
-EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
-
-# Logging
-LOG_LEVEL=INFO
-
-# LLM: ordem de fallback (provider:model)
-LLM_TIMEOUT_SECONDS=60
-LLM_ROUTE=gemini:gemini-3-flash-preview,gemini:gemini-2.5-flash,openai:gpt-4.1-mini
-
-# Chaves de API (obrigatórias para usar LLM)
-GEMINI_API_KEY=SEU_TOKEN_GEMINI_AQUI
-OPENAI_API_KEY=SEU_TOKEN_OPENAI_AQUI
-
-# UI (Streamlit)
-# Para uso local:
-API_BASE_URL=http://localhost:8000
-# Timeout das chamadas HTTP da UI (upload pode demorar com modelo E5; use 600 se necessário)
-HTTP_TIMEOUT_SECONDS=600
+GEMINI_API_KEY=sua_chave_aqui
+OPENAI_API_KEY=sua_chave_aqui
 ```
 
-> Sem `GEMINI_API_KEY` e/ou `OPENAI_API_KEY`, o `LLMClient` não consegue configurar nenhum provider e o pipeline de perguntas irá falhar.
+> 💡 **Dica:** Apenas uma chave é obrigatória. Se configurar as duas, o sistema usa fallback automático entre provedores.
+
+### Passo 3 — Suba os serviços
+```bash
+docker compose up --build
+```
+
+Aguarde o build terminar. Na primeira vez pode levar alguns minutos.
+
+### Serviços disponíveis
+
+| Serviço | URL | Descrição |
+|---|---|---|
+| **API** | http://localhost:8000 | Back-end principal |
+| **Swagger Docs** | http://localhost:8000/docs | Documentação interativa da API |
+| **Interface Web** | http://localhost:8501 | UI para upload e perguntas |
 
 ---
 
-## Executando com Docker (recomendado para primeiro uso)
+## 📖 Como usar
 
-Pré-requisitos:
+### Pela interface web (Streamlit)
 
-- Docker instalado
-- Docker Compose (ou `docker compose` já disponível na sua versão do Docker)
-- Arquivo `.env` configurado (veja seção anterior)
+1. Acesse **http://localhost:8501** no seu navegador
+2. Faça upload de um ou mais documentos PDF
+3. Vá para a página de **Chat**
+4. Faça sua pergunta e receba a resposta com referências ao documento
 
-### 1. Build e subida dos serviços
+### Pela API
 
-Na raiz do projeto:
-
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `GET` | `/health` | Verifica se a API está rodando |
+| `POST` | `/documents` | Faz upload de um PDF |
+| `POST` | `/question` | Faz uma pergunta |
 ```bash
-docker compose up -d --build
-```
-
-Isso irá:
-
-- Construir a imagem da **API** a partir de `Dockerfile.api`.
-- Construir a imagem da **UI** a partir de `Dockerfile.ui`.
-- Criar um volume `rag_data` compartilhado para os dados (`/app/data`) da API.
-- Ler o arquivo `.env` e aplicar as variáveis de ambiente para os serviços.
-
-Após a subida:
-
-- API: `http://localhost:8000`
-  - Healthcheck: `http://localhost:8000/health`
-  - Docs Swagger: `http://localhost:8000/docs`
-- UI (Streamlit): `http://localhost:8501`
-
-> No `docker-compose.yml`, a UI é configurada com `API_BASE_URL=http://api:8000`, que é o hostname interno do serviço da API dentro da rede do Docker. Você **não** precisa mudar isso no `.env` para rodar com Compose.
-
-### 2. Parar os serviços
-
-```bash
-docker compose down
-```
-
-### 3. Remover volumes (apaga índice do Chroma e uploads)
-
-```bash
-docker compose down -v
-```
-
-> Cuidado: isso apagará definitivamente o índice vetorial e os documentos já ingeridos.
-
-### 4. Ver logs
-
-```bash
-docker compose logs -f         # todos os serviços
-docker compose logs -f api     # apenas API
-docker compose logs -f ui      # apenas UI
-```
-
----
-
-## Executando sem Docker (ambiente local)
-
-Pré-requisitos:
-
-- Python 3.10+
-- `pip` atualizado
-- Arquivo `.env` configurado
-
-### 1. Criar e ativar ambiente virtual
-
-```bash
-python -m venv .venv
-
-# Linux / macOS
-source .venv/bin/activate
-
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
-```
-
-### 2. Instalar dependências
-
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-### 3. Garantir variáveis de ambiente
-
-O mais simples é usar o `.env` já criado. O `pydantic-settings` carrega esse arquivo automaticamente para a API e para a UI.
-
-Se preferir exportar variáveis manualmente (opcional), exemplos:
-
-```bash
-export CHROMA_PATH=data/chroma
-export UPLOAD_DIR=data/raw
-export GEMINI_API_KEY=SEU_TOKEN_GEMINI_AQUI
-export OPENAI_API_KEY=SEU_TOKEN_OPENAI_AQUI
-export LLM_ROUTE=gemini:gemini-3-flash-preview,gemini:gemini-2.5-flash,openai:gpt-4.1-mini
-export API_BASE_URL=http://localhost:8000
-```
-
-### 4. Subir a API (FastAPI)
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-Verifique se está tudo ok:
-
-```bash
+# Health check
 curl http://localhost:8000/health
+
+# Upload de documento
+curl -X POST http://localhost:8000/documents \
+  -F "file=@documento.pdf"
+
+# Fazer uma pergunta
+curl -X POST http://localhost:8000/question \
+  -H "Content-Type: application/json" \
+  -d '{"question": "O que é um motor de indução?"}'
 ```
 
-### 5. Subir a UI (Streamlit)
+---
 
-Em outro terminal, com o mesmo ambiente virtual ativado:
+## 💡 Exemplos de perguntas e respostas
 
+Os PDFs de exemplo estão na pasta `example_data/`. Faça upload e teste:
+
+**LB5001.pdf**
+> ❓ How often should motor bearings be lubricated for motors up to frame size 210 at 1800 RPM?
+> ✅ Motor bearings should be relubricated every 12,000 hours.
+
+**MN414_0224.pdf**
+> ❓ What lubricant is recommended for new Baldor submersible motors?
+> ✅ Shell Rotella SAE 10W. New motors ship with the oil reservoir properly filled.
+
+**WEG-CESTARI manual**
+> ❓ Within what maximum period must WEG-CESTARI gear units be put into operation after leaving the factory?
+> ✅ Within a maximum period of 6 months after leaving the factory.
+
+**WEG motor (em português)**
+> ❓ Por que o motor de indução é o tipo de motor elétrico mais utilizado?
+> ✅ Construção simples, alta confiabilidade, baixo custo, baixa manutenção e boa eficiência.
+
+> **Nota:** O texto exato da resposta pode variar conforme o provedor de IA, mas as informações-chave devem coincidir.
+
+---
+
+## 🏗️ Como o sistema funciona
+
+O sistema opera em dois pipelines:
+
+**Ingestão (upload de PDF)**
+```
+PDF → extração de texto → limpeza → chunking → embeddings → ChromaDB
+```
+
+**Perguntas**
+```
+pergunta → embedding → busca vetorial → reranking → prompt → LLM → resposta
+```
+
+---
+
+## ⚙️ Diferenciais técnicos
+
+**Query Expansion (EN → PT)**
+Termos técnicos em inglês são expandidos para equivalentes em português, melhorando a recuperação quando a pergunta está em inglês mas o documento está em português.
+
+**Reranking Heurístico**
+Perguntas conceituais ("por que", "vantagens", "how does it work") tendem a estar em seções introdutórias. O reranker detecta esse padrão e ajusta a pontuação dos chunks.
+
+**Deduplicação de Chunks**
+Chunks muito similares são removidos antes de serem enviados ao LLM, evitando contexto redundante.
+
+**Fallback entre provedores de LLM**
+Se o provedor primário falhar, o sistema tenta automaticamente o segundo provedor — sem interrupção para o usuário.
+
+**Benchmark de Retrieval**
 ```bash
+python scripts/benchmark_retrieval.py
+# Métricas: top-1, top-3 e top-5 accuracy
+```
+
+---
+
+## 📁 Estrutura do projeto
+```
+app/
+├── api/                # Rotas FastAPI
+├── pipelines/          # Ingestão e perguntas
+├── retrieval/          # Busca e reranking
+├── document_processor/ # Processamento de PDF
+├── storage/            # Abstração do banco vetorial
+├── qa/                 # Construção de prompts
+├── clients/            # Provedores de LLM
+└── core/               # Config, logging, dependências
+
+ui/
+├── pages/              # Páginas da interface
+├── components/         # Componentes reutilizáveis
+└── services/           # Comunicação com a API
+
+scripts/
+└── benchmark_retrieval.py
+```
+
+---
+
+## 🛠️ Rodando sem Docker (opcional)
+```bash
+# 1. Criar e ativar ambiente virtual
+python -m venv .venv
+source .venv/bin/activate      # Linux / Mac
+.venv\Scripts\activate         # Windows
+
+# 2. Instalar dependências
+pip install -r requirements.txt
+
+# 3. Iniciar a API
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# 4. Iniciar a interface (em outro terminal)
 streamlit run ui/streamlit_app.py
 ```
 
-Acesse:
+---
 
-- API: `http://localhost:8000`
-- UI: `http://localhost:8501`
+## 🔧 Resolução de problemas
+
+**Nenhum provedor de IA disponível**
+Verifique se o `.env` contém pelo menos uma chave:
+```env
+GEMINI_API_KEY=sua_chave
+# ou
+OPENAI_API_KEY=sua_chave
+```
+
+**Qualidade de recuperação ruim**
+- Documentos não foram indexados — faça upload novamente
+- O modelo de embedding foi alterado — reindexe os documentos
+- Documentos sem relação com a pergunta — verifique os arquivos enviados
+
+**Serviços não sobem com Docker**
+```bash
+docker ps                  # verifica se o Docker está rodando
+docker compose logs        # inspeciona os logs de erro
+```
+> Confirme também que as portas `8000` e `8501` não estão em uso.
 
 ---
 
-## Como usar a aplicação (passo a passo)
-
-1. **Suba a API e a UI** (via Docker Compose ou localmente, conforme seções anteriores).
-2. **Abra a UI no navegador** em `http://localhost:8501`.
-3. Na aba **“Upload de documentos”**:
-   - Selecione um ou mais arquivos `.pdf`.
-   - Clique em **“Indexar PDFs”**.
-   - Verifique as mensagens de sucesso/erro para cada arquivo.
-4. Após pelo menos um documento ser indexado, vá para a aba **“Chat RAG”**:
-   - Digite sua pergunta no campo **“Pergunta”**.
-   - Clique em **“Enviar”**.
-   - A UI exibirá:
-     - a resposta gerada pelo LLM,
-     - a lista de referências (documento + página),
-     - opcionalmente, os chunks recuperados com scores e trechos de texto.
-5. Se algo não funcionar:
-   - Verifique a sidebar da UI: ela mostra o status da API (`/health`).
-   - Confira se o `.env` está com chaves válidas (`GEMINI_API_KEY`, `OPENAI_API_KEY`).
-   - Veja os logs do backend (terminal local ou `docker compose logs api`).
-
----
-
-## Como usar a API diretamente (sem UI)
-
-### Healthcheck
-
-```bash
-curl http://localhost:8000/health
-```
-
-### Upload de documento
-
-```bash
-curl -X POST "http://localhost:8000/documents" \
-  -H "accept: application/json" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@seu_documento.pdf;type=application/pdf"
-```
-
-Resposta esperada (exemplo):
-
-```json
-{
-  "message": "Document processed and indexed successfully",
-  "documents_indexed": 1,
-  "total_chunks": 42
-}
-```
-
-### Pergunta (RAG)
-
-```bash
-curl -X POST "http://localhost:8000/question?top_k=5&initial_k=30" \
-  -H "accept: application/json" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "question": "O que é um motor elétrico?"
-  }'
-```
-
-Resposta esperada (estrutura simplificada):
-
-```json
-{
-  "answer": "Texto da resposta gerada pelo LLM...",
-  "references": [
-    "documento1.pdf - page 3"
-  ],
-  "retrieved_chunks": [
-    {
-      "text": "Trecho completo do chunk...",
-      "source": "documento1.pdf",
-      "page": 3,
-      "distance": 0.123,
-      "score": 0.89,
-      "rerank_score": 1.23,
-      "chunk_index": 10,
-      "char_count": 450,
-      "is_intro_page": false,
-      "section_hint": "Definição de motor elétrico"
-    }
-  ]
-}
-```
-
----
-
-## Dúvidas e troubleshooting
-
-- **Erro de provider LLM / nenhum provider configurado**  
-  - Verifique se `GEMINI_API_KEY` e/ou `OPENAI_API_KEY` estão setadas no `.env`.  
-  - Confira se `LLM_ROUTE` está no formato `provider:model` e se os providers usados existem.
-- **API responde mas a UI diz que está offline**  
-  - Confira o valor de `API_BASE_URL` no `.env`:
-    - Local sem Docker: `http://localhost:8000`
-    - Docker Compose: a variável é sobrescrita para `http://api:8000` no `docker-compose.yml`.
-- **Nenhuma resposta relevante / poucas referências**  
-  - Certifique-se de que você fez upload de PDFs relacionados ao assunto da pergunta.  
-  - Reindexe os documentos se tiver alterado configurações de embedding ou armazenamento.
-
-- **Upload demora muito ou “carrega infinitamente”**  
-  - O modelo de embedding padrão pode ser trocado via `EMBEDDING_MODEL_NAME` no `.env`. O modelo multilíngue (`intfloat/multilingual-e5-base`) é maior e mais lento: na primeira execução o download pode levar vários minutos; o embed de muitos chunks também demora mais.  
-  - Aumente o timeout da UI: `HTTP_TIMEOUT_SECONDS=600` (ou mais).  
-  - Para uploads mais rápidos, use `EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2`. Após trocar o modelo, é necessária **re-indexação** (re-upload dos PDFs).
-
-Com as instruções acima, alguém que nunca usou o projeto deve conseguir:
-
-1. Configurar o `.env` com as chaves de API e paths de dados.  
-2. Subir API e UI (com ou sem Docker).  
-3. Fazer upload de PDFs e começar a perguntar usando a UI ou a API diretamente.
-
+*Construído com foco em qualidade de retrieval, arquitetura modular e experiência de desenvolvimento.*
