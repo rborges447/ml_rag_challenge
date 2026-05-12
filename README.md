@@ -9,7 +9,7 @@
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.x-FF4B4B?style=flat&logo=streamlit&logoColor=white)](https://streamlit.io)
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_DB-orange?style=flat)](https://www.trychroma.com)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)](https://docker.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat)](LICENSE)
+
 
 **End-to-end RAG pipeline** — upload PDFs, ask questions in natural language, get answers grounded in your documents.
 
